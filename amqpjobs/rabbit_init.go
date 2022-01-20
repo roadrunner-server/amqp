@@ -4,7 +4,7 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-func (c *consumer) initRabbitMQ() error {
+func (c *Consumer) initRabbitMQ() error {
 	const op = errors.Op("jobs_plugin_rmq_init")
 	// Channel opens a unique, concurrent server channel to process the bulk of AMQP
 	// messages.  Any error from methods on this receiver will render the receiver

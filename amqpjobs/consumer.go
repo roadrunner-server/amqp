@@ -22,7 +22,7 @@ const (
 	pluginName string = "amqp"
 )
 
-type consumer struct {
+type Consumer struct {
 	sync.Mutex
 	log *zap.Logger
 	pq  priorityqueue.Queue
@@ -61,7 +61,7 @@ type consumer struct {
 }
 
 // NewAMQPConsumer initializes rabbitmq pipeline
-func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer, pq priorityqueue.Queue) (*consumer, error) {
+func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer, pq priorityqueue.Queue) (*Consumer, error) {
 	const op = errors.Op("new_amqp_consumer")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -91,7 +91,7 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 	conf.InitDefault()
 	// PARSE CONFIGURATION END -------
 
-	jb := &consumer{
+	jb := &Consumer{
 		log:       log,
 		pq:        pq,
 		consumeID: uuid.NewString(),
@@ -140,7 +140,7 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 	return jb, nil
 }
 
-func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Configurer, pq priorityqueue.Queue) (*consumer, error) {
+func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Configurer, pq priorityqueue.Queue) (*Consumer, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -160,7 +160,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 	conf.InitDefault()
 	// PARSE CONFIGURATION -------
 
-	jb := &consumer{
+	jb := &Consumer{
 		log:          log,
 		pq:           pq,
 		consumeID:    uuid.NewString(),
@@ -212,7 +212,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 	return jb, nil
 }
 
-func (c *consumer) Push(ctx context.Context, job *jobs.Job) error {
+func (c *Consumer) Push(ctx context.Context, job *jobs.Job) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
@@ -230,12 +230,12 @@ func (c *consumer) Push(ctx context.Context, job *jobs.Job) error {
 	return nil
 }
 
-func (c *consumer) Register(_ context.Context, p *pipeline.Pipeline) error {
+func (c *Consumer) Register(_ context.Context, p *pipeline.Pipeline) error {
 	c.pipeline.Store(p)
 	return nil
 }
 
-func (c *consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
+func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 	start := time.Now()
 	const op = errors.Op("rabbit_run")
 
@@ -281,7 +281,7 @@ func (c *consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 	return nil
 }
 
-func (c *consumer) State(ctx context.Context) (*jobs.State, error) {
+func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 	const op = errors.Op("amqp_driver_state")
 	select {
 	case pch := <-c.publishChan:
@@ -310,7 +310,7 @@ func (c *consumer) State(ctx context.Context) (*jobs.State, error) {
 	}
 }
 
-func (c *consumer) Pause(_ context.Context, p string) {
+func (c *Consumer) Pause(_ context.Context, p string) {
 	start := time.Now()
 	pipe := c.pipeline.Load().(*pipeline.Pipeline)
 	if pipe.Name() != p {
@@ -344,7 +344,7 @@ func (c *consumer) Pause(_ context.Context, p string) {
 	c.log.Debug("pipeline was paused", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 }
 
-func (c *consumer) Resume(_ context.Context, p string) {
+func (c *Consumer) Resume(_ context.Context, p string) {
 	start := time.Now()
 	pipe := c.pipeline.Load().(*pipeline.Pipeline)
 	if pipe.Name() != p {
@@ -398,7 +398,7 @@ func (c *consumer) Resume(_ context.Context, p string) {
 	c.log.Debug("pipeline was resumed", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 }
 
-func (c *consumer) Stop(context.Context) error {
+func (c *Consumer) Stop(context.Context) error {
 	start := time.Now()
 	c.stopCh <- struct{}{}
 
@@ -408,7 +408,7 @@ func (c *consumer) Stop(context.Context) error {
 }
 
 // handleItem
-func (c *consumer) handleItem(ctx context.Context, msg *Item) error {
+func (c *Consumer) handleItem(ctx context.Context, msg *Item) error {
 	const op = errors.Op("rabbitmq_handle_item")
 	select {
 	case pch := <-c.publishChan:
@@ -482,7 +482,7 @@ func (c *consumer) handleItem(ctx context.Context, msg *Item) error {
 	}
 }
 
-func (c *consumer) handleQPush(ctx context.Context, msg []byte, queue string) error {
+func (c *Consumer) handleQPush(ctx context.Context, msg []byte, queue string) error {
 	const op = errors.Op("rabbitmq_handle_item")
 	ch, err := c.conn.Channel()
 	if err != nil {

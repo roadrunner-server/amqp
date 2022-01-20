@@ -11,7 +11,7 @@ import (
 )
 
 // redialer used to redial to the rabbitmq in case of the connection interrupts
-func (c *consumer) redialer() { //nolint:gocognit
+func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 	go func() {
 		const op = errors.Op("rabbitmq_redial")
 

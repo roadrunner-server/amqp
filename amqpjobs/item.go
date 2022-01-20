@@ -51,7 +51,7 @@ type Options struct {
 
 	// nack negatively acknowledge the delivery of message(s) identified by the delivery tag from either the client or server.
 	// When multiple is true, nack messages up to and including delivered messages up until the delivery tag delivered on the same channel.
-	// When requeue is true, request the server to deliver this message to a different consumer. If it is not possible or requeue is false, the message will be dropped or delivered to a server configured dead-letter queue.
+	// When requeue is true, request the server to deliver this message to a different Consumer. If it is not possible or requeue is false, the message will be dropped or delivered to a server configured dead-letter queue.
 	// This method must not be used to select or requeue messages the client wishes not to handle, rather it is to inform the server that the client is incapable of handling this message at this time
 	nack func(multiply bool, requeue bool) error
 
@@ -129,7 +129,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 	if err != nil {
 		errNack := i.Options.nack(false, true)
 		if errNack != nil {
-			return fmt.Errorf("requeue error: %v\nack error: %v", err, errNack)
+			return fmt.Errorf("requeue error: %w\nack error: %v", err, errNack)
 		}
 
 		return err
@@ -154,7 +154,7 @@ func (i *Item) Respond(data []byte, queue string) error {
 }
 
 // fromDelivery converts amqp.Delivery into an Item which will be pushed to the PQ
-func (c *consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
+func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 	const op = errors.Op("from_delivery_convert")
 	item, err := c.unpack(d)
 	if err != nil {
@@ -211,7 +211,7 @@ func pack(id string, j *Item) (amqp.Table, error) {
 }
 
 // unpack restores jobs.Options
-func (c *consumer) unpack(d amqp.Delivery) (*Item, error) {
+func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
 	item := &Item{Payload: utils.AsString(d.Body), Options: &Options{
 		multipleAsk: c.multipleAck,
 		requeue:     c.requeueOnFail,

@@ -5,7 +5,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (c *consumer) listener(deliv <-chan amqp.Delivery) {
+func (c *Consumer) listener(deliv <-chan amqp.Delivery) {
 	go func() {
 		for { //nolint:gosimple
 			select {
