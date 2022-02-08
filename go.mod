@@ -10,7 +10,7 @@ require (
 	github.com/roadrunner-server/api/v2 v2.8.0-rc.3
 	github.com/roadrunner-server/errors v1.1.1
 	github.com/roadrunner-server/sdk/v2 v2.8.0-rc.3
-	go.uber.org/zap v1.20.0
+	go.uber.org/zap v1.21.0
 )
 
 require (
