@@ -5,7 +5,7 @@ import (
 	"github.com/roadrunner-server/api/v2/plugins/config"
 	"github.com/roadrunner-server/api/v2/plugins/jobs"
 	"github.com/roadrunner-server/api/v2/plugins/jobs/pipeline"
-	priorityqueue "github.com/roadrunner-server/sdk/v2/priority_queue"
+	priorityqueue "github.com/roadrunner-server/api/v2/pq"
 	"go.uber.org/zap"
 )
 

@@ -12,8 +12,8 @@ import (
 	cfgPlugin "github.com/roadrunner-server/api/v2/plugins/config"
 	"github.com/roadrunner-server/api/v2/plugins/jobs"
 	"github.com/roadrunner-server/api/v2/plugins/jobs/pipeline"
+	priorityqueue "github.com/roadrunner-server/api/v2/pq"
 	"github.com/roadrunner-server/errors"
-	priorityqueue "github.com/roadrunner-server/sdk/v2/priority_queue"
 	"github.com/roadrunner-server/sdk/v2/utils"
 	"go.uber.org/zap"
 )
