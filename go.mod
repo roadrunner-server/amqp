@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.2
-	github.com/goccy/go-json v0.9.4
+	github.com/goccy/go-json v0.9.5
 	github.com/google/uuid v1.3.0
 	github.com/rabbitmq/amqp091-go v1.3.0
 	github.com/roadrunner-server/api/v2 v2.10.0
@@ -16,5 +16,5 @@ require (
 require (
 	github.com/roadrunner-server/tcplisten v1.1.1 // indirect
 	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.7.0 // indirect
+	go.uber.org/multierr v1.8.0 // indirect
 )
