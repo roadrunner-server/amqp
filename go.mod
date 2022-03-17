@@ -9,7 +9,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.3.0
 	github.com/roadrunner-server/api/v2 v2.13.0
 	github.com/roadrunner-server/errors v1.1.2
-	github.com/roadrunner-server/sdk/v2 v2.11.0
+	github.com/roadrunner-server/sdk/v2 v2.11.1
 	go.uber.org/zap v1.21.0
 )
 
