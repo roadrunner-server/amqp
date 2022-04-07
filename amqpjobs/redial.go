@@ -17,7 +17,7 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 
 		for {
 			select {
-			case err := <-c.conn.NotifyClose(make(chan *amqp.Error)):
+			case err := <-c.notifyConnClose:
 				if err == nil {
 					return
 				}
@@ -124,9 +124,10 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 
 				err = c.conn.Close()
 				if err != nil {
-					c.log.Error("amqp connection close", zap.Error(err))
+					c.log.Error("amqp connection closed", zap.Error(err))
 				}
 
+				close(c.publishChan)
 				return
 			}
 		}

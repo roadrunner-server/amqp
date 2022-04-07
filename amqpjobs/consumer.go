@@ -30,11 +30,12 @@ type Consumer struct {
 	pipeline atomic.Value
 
 	// amqp connection
-	conn        *amqp.Connection
-	consumeChan *amqp.Channel
-	publishChan chan *amqp.Channel
-	consumeID   string
-	connStr     string
+	conn            *amqp.Connection
+	notifyConnClose chan *amqp.Error
+	consumeChan     *amqp.Channel
+	publishChan     chan *amqp.Channel
+	consumeID       string
+	connStr         string
 
 	retryTimeout time.Duration
 	//
@@ -95,13 +96,14 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 		log:       log,
 		pq:        pq,
 		consumeID: uuid.NewString(),
-		stopCh:    make(chan struct{}),
+		stopCh:    make(chan struct{}, 1),
 		// TODO to config
-		retryTimeout: time.Minute * 5,
+		retryTimeout: time.Minute,
 		priority:     conf.Priority,
 		delayed:      utils.Int64(0),
 
 		publishChan:       make(chan *amqp.Channel, 1),
+		notifyConnClose:   make(chan *amqp.Error, 1),
 		routingKey:        conf.RoutingKey,
 		queue:             conf.Queue,
 		durable:           conf.Durable,
@@ -121,6 +123,7 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 
 	// save address
 	jb.connStr = conf.Addr
+	jb.conn.NotifyClose(jb.notifyConnClose)
 
 	err = jb.initRabbitMQ()
 	if err != nil {
@@ -164,11 +167,12 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 		log:          log,
 		pq:           pq,
 		consumeID:    uuid.NewString(),
-		stopCh:       make(chan struct{}),
-		retryTimeout: time.Minute * 5,
+		stopCh:       make(chan struct{}, 1),
+		retryTimeout: time.Minute,
 		delayed:      utils.Int64(0),
 
 		publishChan:       make(chan *amqp.Channel, 1),
+		notifyConnClose:   make(chan *amqp.Error, 1),
 		routingKey:        pipeline.String(routingKey, ""),
 		queue:             pipeline.String(queue, "default"),
 		exchangeType:      pipeline.String(exchangeType, "direct"),
@@ -189,6 +193,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 
 	// save address
 	jb.connStr = conf.Addr
+	jb.conn.NotifyClose(jb.notifyConnClose)
 
 	err = jb.initRabbitMQ()
 	if err != nil {
@@ -482,7 +487,7 @@ func (c *Consumer) handleItem(ctx context.Context, msg *Item) error {
 	}
 }
 
-func (c *Consumer) handleQPush(ctx context.Context, msg []byte, queue string) error {
+func (c *Consumer) handleQPush(_ context.Context, msg []byte, queue string) error {
 	const op = errors.Op("rabbitmq_handle_item")
 	ch, err := c.conn.Channel()
 	if err != nil {
