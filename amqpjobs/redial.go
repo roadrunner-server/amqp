@@ -18,6 +18,7 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 			select {
 			case err := <-c.notifyCloseConnCh:
 				if err == nil {
+					c.log.Debug("exited from redialer")
 					return
 				}
 
@@ -29,13 +30,16 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 
 				select {
 				case c.redialCh <- err:
+					c.log.Debug("exited from redialer")
 					return
 				default:
+					c.log.Debug("exited from redialer")
 					return
 				}
 
 			case err := <-c.notifyCloseConsumeCh:
 				if err == nil {
+					c.log.Debug("exited from redialer")
 					return
 				}
 
@@ -47,12 +51,15 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 
 				select {
 				case c.redialCh <- err:
+					c.log.Debug("exited from redialer")
 					return
 				default:
+					c.log.Debug("exited from redialer")
 					return
 				}
 			case err := <-c.notifyClosePubCh:
 				if err == nil {
+					c.log.Debug("exited from redialer")
 					return
 				}
 
@@ -64,12 +71,15 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 
 				select {
 				case c.redialCh <- err:
+					c.log.Debug("exited from redialer")
 					return
 				default:
+					c.log.Debug("exited from redialer")
 					return
 				}
 			case err := <-c.notifyCloseStatCh:
 				if err == nil {
+					c.log.Debug("redialer stopped")
 					return
 				}
 
@@ -81,12 +91,16 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 
 				select {
 				case c.redialCh <- err:
+					c.log.Debug("redialer stopped")
 					return
 				default:
+					c.log.Debug("redialer stopped")
 					return
 				}
 
 			case <-c.stopCh:
+				c.log.Debug("starting stop routine")
+
 				pch := <-c.publishChan
 				stCh := <-c.stateChan
 
