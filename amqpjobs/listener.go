@@ -1,6 +1,8 @@
 package amqpjobs
 
 import (
+	"sync/atomic"
+
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
 )
@@ -12,6 +14,14 @@ func (c *Consumer) listener(deliv <-chan amqp.Delivery) {
 			case msg, ok := <-deliv:
 				if !ok {
 					c.log.Debug("delivery channel was closed, leaving the rabbit listener")
+					// reduce number of listeners
+					if atomic.LoadUint32(&c.listeners) == 0 {
+						c.log.Debug("number of listeners", zap.Uint32("listeners", atomic.LoadUint32(&c.listeners)))
+						return
+					}
+
+					atomic.AddUint32(&c.listeners, ^uint32(0))
+					c.log.Debug("number of listeners", zap.Uint32("listeners", atomic.LoadUint32(&c.listeners)))
 					return
 				}
 
