@@ -29,22 +29,22 @@ type Consumer struct {
 
 	pipeline atomic.Value
 
-	// amqp connection
-	conn            *amqp.Connection
-	notifyConnClose chan *amqp.Error
-	consumeChan     *amqp.Channel
-	publishChan     chan *amqp.Channel
-	consumeID       string
-	connStr         string
+	// amqp connection notifiers
+	notifyCloseConnCh    chan *amqp.Error
+	notifyClosePubCh     chan *amqp.Error
+	notifyCloseConsumeCh chan *amqp.Error
+	notifyCloseStatCh    chan *amqp.Error
+	redialCh             chan *amqp.Error
 
-	retryTimeout time.Duration
-	//
-	// prefetch QoS AMQP
-	//
-	prefetch int
-	//
-	// pipeline's priority
-	//
+	conn        *amqp.Connection
+	consumeChan *amqp.Channel
+	stateChan   chan *amqp.Channel
+	publishChan chan *amqp.Channel
+	consumeID   string
+	connStr     string
+
+	retryTimeout      time.Duration
+	prefetch          int
 	priority          int64
 	exchangeName      string
 	queue             string
@@ -59,6 +59,7 @@ type Consumer struct {
 	listeners uint32
 	delayed   *int64
 	stopCh    chan struct{}
+	stopped   uint32
 }
 
 // NewAMQPConsumer initializes rabbitmq pipeline
@@ -102,8 +103,15 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 		priority:     conf.Priority,
 		delayed:      utils.Int64(0),
 
-		publishChan:       make(chan *amqp.Channel, 1),
-		notifyConnClose:   make(chan *amqp.Error, 1),
+		publishChan: make(chan *amqp.Channel, 1),
+		stateChan:   make(chan *amqp.Channel, 1),
+		redialCh:    make(chan *amqp.Error, 5),
+
+		notifyCloseConsumeCh: make(chan *amqp.Error, 1),
+		notifyCloseConnCh:    make(chan *amqp.Error, 1),
+		notifyCloseStatCh:    make(chan *amqp.Error, 1),
+		notifyClosePubCh:     make(chan *amqp.Error, 1),
+
 		routingKey:        conf.RoutingKey,
 		queue:             conf.Queue,
 		durable:           conf.Durable,
@@ -123,8 +131,6 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 
 	// save address
 	jb.connStr = conf.Addr
-	jb.conn.NotifyClose(jb.notifyConnClose)
-
 	err = jb.initRabbitMQ()
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -135,10 +141,21 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 		return nil, errors.E(op, err)
 	}
 
+	stch, err := jb.conn.Channel()
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	jb.conn.NotifyClose(jb.notifyCloseConnCh)
+	pch.NotifyClose(jb.notifyClosePubCh)
+	stch.NotifyClose(jb.notifyCloseStatCh)
+
 	jb.publishChan <- pch
+	jb.stateChan <- stch
 
 	// run redialer and requeue listener for the connection
 	jb.redialer()
+	jb.redialMergeCh()
 
 	return jb, nil
 }
@@ -171,8 +188,15 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 		retryTimeout: time.Minute,
 		delayed:      utils.Int64(0),
 
-		publishChan:       make(chan *amqp.Channel, 1),
-		notifyConnClose:   make(chan *amqp.Error, 1),
+		publishChan: make(chan *amqp.Channel, 1),
+		stateChan:   make(chan *amqp.Channel, 1),
+
+		redialCh:             make(chan *amqp.Error, 5),
+		notifyCloseConsumeCh: make(chan *amqp.Error, 1),
+		notifyCloseConnCh:    make(chan *amqp.Error, 1),
+		notifyCloseStatCh:    make(chan *amqp.Error, 1),
+		notifyClosePubCh:     make(chan *amqp.Error, 1),
+
 		routingKey:        pipeline.String(routingKey, ""),
 		queue:             pipeline.String(queue, "default"),
 		exchangeType:      pipeline.String(exchangeType, "direct"),
@@ -193,7 +217,6 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 
 	// save address
 	jb.connStr = conf.Addr
-	jb.conn.NotifyClose(jb.notifyConnClose)
 
 	err = jb.initRabbitMQ()
 	if err != nil {
@@ -205,7 +228,18 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 		return nil, errors.E(op, err)
 	}
 
+	// channel to report amqp states
+	stch, err := jb.conn.Channel()
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	jb.conn.NotifyClose(jb.notifyCloseConnCh)
+	pch.NotifyClose(jb.notifyClosePubCh)
+	stch.NotifyClose(jb.notifyCloseStatCh)
+
 	jb.publishChan <- pch
+	jb.stateChan <- stch
 
 	// register the pipeline
 	// error here is always nil
@@ -213,6 +247,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 
 	// run redialer for the connection
 	jb.redialer()
+	jb.redialMergeCh()
 
 	return jb, nil
 }
@@ -278,6 +313,7 @@ func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 		return errors.E(op, err)
 	}
 
+	c.consumeChan.NotifyClose(c.notifyCloseConsumeCh)
 	// run listener
 	c.listener(deliv)
 
@@ -289,12 +325,12 @@ func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 	const op = errors.Op("amqp_driver_state")
 	select {
-	case pch := <-c.publishChan:
+	case stateCh := <-c.stateChan:
 		defer func() {
-			c.publishChan <- pch
+			c.stateChan <- stateCh
 		}()
 
-		q, err := pch.QueueInspect(c.queue)
+		q, err := stateCh.QueueInspect(c.queue)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
@@ -405,10 +441,12 @@ func (c *Consumer) Resume(_ context.Context, p string) {
 
 func (c *Consumer) Stop(context.Context) error {
 	start := time.Now()
+	atomic.StoreUint32(&c.stopped, 1)
 	c.stopCh <- struct{}{}
 
 	pipe := c.pipeline.Load().(*pipeline.Pipeline)
 	c.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	close(c.redialCh)
 	return nil
 }
 
