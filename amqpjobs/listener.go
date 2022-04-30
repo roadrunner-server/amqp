@@ -43,6 +43,11 @@ func (c *Consumer) listener(deliv <-chan amqp.Delivery) {
 					continue
 				}
 
+				if d.Options.AutoAck {
+					// we don't care about error here, since the job is not important
+					_ = msg.Ack(false)
+				}
+
 				// insert job into the main priority queue
 				c.pq.Insert(d)
 			}

@@ -45,6 +45,9 @@ type Options struct {
 	// Delay defines time duration to delay execution for. Defaults to none.
 	Delay int64 `json:"delay,omitempty"`
 
+	// AutoAck option
+	AutoAck bool `json:"auto_ack"`
+
 	// private
 	// ack delegates an acknowledgement through the Acknowledger interface that the client or server has finished work on a delivery
 	ack func(multiply bool) error
@@ -169,10 +172,24 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 		Options: item.Options,
 	}
 
-	item.Options.ack = d.Ack
-	item.Options.nack = d.Nack
-	item.Options.delayed = c.delayed
+	switch item.Options.AutoAck {
+	case true:
+		c.log.Debug("using auto acknowledge for the job")
+		// stubs for ack/nack
+		item.Options.ack = func(_ bool) error {
+			return nil
+		}
 
+		item.Options.nack = func(_ bool, _ bool) error {
+			return nil
+		}
+	case false:
+		c.log.Debug("using driver's ack for the job")
+		item.Options.ack = d.Ack
+		item.Options.nack = d.Nack
+	}
+
+	item.Options.delayed = c.delayed
 	// requeue func
 	item.Options.requeueFn = c.handleItem
 	// func to handle push
@@ -190,6 +207,7 @@ func fromJob(job *jobs.Job) *Item {
 			Priority: job.Options.Priority,
 			Pipeline: job.Options.Pipeline,
 			Delay:    job.Options.Delay,
+			AutoAck:  job.Options.AutoAck,
 		},
 	}
 }
@@ -207,6 +225,7 @@ func pack(id string, j *Item) (amqp.Table, error) {
 		jobs.RRHeaders:  h,
 		jobs.RRDelay:    j.Options.Delay,
 		jobs.RRPriority: j.Options.Priority,
+		jobs.RRAutoAck:  j.Options.AutoAck,
 	}, nil
 }
 
@@ -259,6 +278,12 @@ func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
 			item.Options.Priority = t.(int64)
 		default:
 			c.log.Warn("unknown priority type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
+		}
+	}
+
+	if aa, ok := d.Headers[jobs.RRAutoAck]; ok {
+		if val, ok := aa.(bool); ok {
+			item.Options.AutoAck = val
 		}
 	}
 
