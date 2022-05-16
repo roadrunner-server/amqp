@@ -20,10 +20,14 @@ github.com/rabbitmq/amqp091-go v1.3.4 h1:tXuIslN1nhDqs2t6Jrz3BAoqvt4qIZzxvdbdcxW
 github.com/rabbitmq/amqp091-go v1.3.4/go.mod h1:ogQDLSOACsLPsIq0NpbtiifNZi2YOz0VTJ0kHRghqbM=
 github.com/roadrunner-server/api/v2 v2.17.0 h1:uB7bi4qt1FhWq4pOosWfyzJjInGztvf4mQcuUCzMGGI=
 github.com/roadrunner-server/api/v2 v2.17.0/go.mod h1:kTic07XUaHlPub5Pe1d9mdukYw840oJ4S/fkH2fUURs=
+github.com/roadrunner-server/api/v2 v2.17.1 h1:uxjmFwHwdce/tG5oRaLGJ7iiGMOEWcx9/gSRXyCH84g=
+github.com/roadrunner-server/api/v2 v2.17.1/go.mod h1:eAFjmf/u+ZBubzIUEjw1fJKYMExK2YnKqNuiepsFveo=
 github.com/roadrunner-server/errors v1.1.2 h1:+LPw9Akgg+8LAGM4wASMWLAoBIbyP+mhNfR+FBS2Slw=
 github.com/roadrunner-server/errors v1.1.2/go.mod h1:jVSh32nFtRMzKItYUM9W2CTLLpXAM8HseL2lUENPYtU=
 github.com/roadrunner-server/sdk/v2 v2.14.0 h1:Z3GkXGKlWjwOEmTl7VmusgULHDRAj93K7krAolbtBsk=
 github.com/roadrunner-server/sdk/v2 v2.14.0/go.mod h1:CLDScQwC48YBBfKddtaoo3lOG5COsoprFrD1RIJRp28=
+github.com/roadrunner-server/sdk/v2 v2.14.1 h1:GVfVhkRIXLaXubflZbquaU1E3oy+fTRzglgkCqNfOa0=
+github.com/roadrunner-server/sdk/v2 v2.14.1/go.mod h1:5Vwb4tPDfH2yPy+SFrFgTSO7195lw+LXPgvqDvjjGB8=
 github.com/roadrunner-server/tcplisten v1.1.2 h1:GBjKlSEbA67UB2y83rFWsQKqMQGyalhTN9Q9HCIMBC0=
 github.com/roadrunner-server/tcplisten v1.1.2/go.mod h1:wN2/X46Vo60sC9L5Bf/eC8kL+X3//7KIFmANEXZaLsg=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
