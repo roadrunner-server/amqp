@@ -168,10 +168,10 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 	if err != nil {
 		// can't decode the delivery
 
-		id := uuid.NewString()
-		c.log.Debug("get raw payload", zap.String("assigned ID", id))
-
 		if errors.Is(errors.Decode, err) && c.consumeAll {
+			id := uuid.NewString()
+			c.log.Debug("get raw payload", zap.String("assigned ID", id))
+
 			return &Item{
 				Job:     auto,
 				Ident:   id,
