@@ -65,7 +65,6 @@ type Options struct {
 
 	// requeueFn used as a pointer to the push function
 	requeueFn func(context.Context, *Item) error
-	qPushFn   func(context.Context, []byte, string) error
 
 	// delayed jobs TODO(rustatian): figure out how to get stats from the DLX
 	delayed     *int64
@@ -152,12 +151,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 	return nil
 }
 
-// Respond to the queue within pipeline
-func (i *Item) Respond(data []byte, queue string) error {
-	err := i.Options.qPushFn(context.Background(), data, queue)
-	if err != nil {
-		return err
-	}
+func (i *Item) Respond(_ []byte, _ string) error {
 	return nil
 }
 
@@ -184,7 +178,6 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 					ack:         d.Ack,
 					nack:        d.Nack,
 					requeueFn:   c.handleItem,
-					qPushFn:     c.handleQPush,
 					delayed:     c.delayed,
 					AutoAck:     false,
 					multipleAsk: false,
@@ -224,8 +217,6 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 	item.Options.delayed = c.delayed
 	// requeue func
 	item.Options.requeueFn = c.handleItem
-	// func to handle push
-	item.Options.qPushFn = c.handleQPush
 	return i, nil
 }
 
@@ -264,7 +255,8 @@ func pack(id string, j *Item) (amqp.Table, error) {
 // unpack restores jobs.Options
 func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
 	item := &Item{
-		Payload: utils.AsString(d.Body), Options: &Options{
+		Payload: utils.AsString(d.Body),
+		Options: &Options{
 			multipleAsk: c.multipleAck,
 			requeue:     c.requeueOnFail,
 			requeueFn:   c.handleItem,

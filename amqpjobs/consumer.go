@@ -527,27 +527,6 @@ func (c *Consumer) handleItem(ctx context.Context, msg *Item) error {
 	}
 }
 
-func (c *Consumer) handleQPush(_ context.Context, msg []byte, queue string) error {
-	const op = errors.Op("rabbitmq_handle_item")
-	ch, err := c.conn.Channel()
-	if err != nil {
-		return errors.E(op, err)
-	}
-
-	err = ch.Publish(c.exchangeName, queue, false, false, amqp.Publishing{
-		ContentType:  contentType,
-		Timestamp:    time.Now(),
-		DeliveryMode: amqp.Persistent,
-		Body:         msg,
-	})
-
-	if err != nil {
-		return errors.E(op, err)
-	}
-
-	return ch.Close()
-}
-
 func ready(r uint32) bool {
 	return r > 0
 }
