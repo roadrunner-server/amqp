@@ -188,6 +188,7 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 				},
 			}, nil
 		}
+
 		return nil, errors.E(op, err)
 	}
 
