@@ -24,10 +24,10 @@ const (
 
 type Consumer struct {
 	sync.Mutex
-	log *zap.Logger
-	pq  priorityqueue.Queue
-
-	pipeline atomic.Value
+	log        *zap.Logger
+	pq         priorityqueue.Queue
+	pipeline   atomic.Value
+	consumeAll bool
 
 	// amqp connection notifiers
 	notifyCloseConnCh    chan *amqp.Error
@@ -94,11 +94,12 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 	// PARSE CONFIGURATION END -------
 
 	jb := &Consumer{
-		log:       log,
-		pq:        pq,
-		consumeID: uuid.NewString(),
-		stopCh:    make(chan struct{}, 1),
-		// TODO to config
+		log:        log,
+		pq:         pq,
+		consumeID:  uuid.NewString(),
+		stopCh:     make(chan struct{}, 1),
+		consumeAll: conf.ConsumeAll,
+
 		retryTimeout: time.Minute,
 		priority:     conf.Priority,
 		delayed:      utils.Int64(0),
@@ -197,6 +198,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 		notifyCloseStatCh:    make(chan *amqp.Error, 1),
 		notifyClosePubCh:     make(chan *amqp.Error, 1),
 
+		consumeAll:        pipeline.Bool(consumeAll, false),
 		routingKey:        pipeline.String(routingKey, ""),
 		queue:             pipeline.String(queue, "default"),
 		exchangeType:      pipeline.String(exchangeType, "direct"),

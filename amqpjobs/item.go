@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/goccy/go-json"
+	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v2/plugins/jobs"
 	"github.com/roadrunner-server/errors"
@@ -15,6 +16,10 @@ import (
 )
 
 var _ jobs.Acknowledger = (*Item)(nil)
+
+const (
+	auto string = "deduced_by_rr"
+)
 
 type Item struct {
 	// Job contains pluginName of job broker (usually PHP class).
@@ -161,6 +166,33 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 	const op = errors.Op("from_delivery_convert")
 	item, err := c.unpack(d)
 	if err != nil {
+		// can't decode the delivery
+
+		if errors.Is(errors.Decode, err) && c.consumeAll {
+			id := uuid.NewString()
+			c.log.Debug("get raw payload", zap.String("assigned ID", id))
+
+			return &Item{
+				Job:     auto,
+				Ident:   id,
+				Payload: utils.AsString(d.Body),
+				Headers: convHeaders(d.Headers),
+				Options: &Options{
+					Priority:    10,
+					Delay:       0,
+					Pipeline:    auto,
+					ack:         d.Ack,
+					nack:        d.Nack,
+					requeueFn:   c.handleItem,
+					qPushFn:     c.handleQPush,
+					delayed:     c.delayed,
+					AutoAck:     false,
+					multipleAsk: false,
+					requeue:     false,
+				},
+			}, nil
+		}
+
 		return nil, errors.E(op, err)
 	}
 
@@ -231,20 +263,22 @@ func pack(id string, j *Item) (amqp.Table, error) {
 
 // unpack restores jobs.Options
 func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
-	item := &Item{Payload: utils.AsString(d.Body), Options: &Options{
-		multipleAsk: c.multipleAck,
-		requeue:     c.requeueOnFail,
-		requeueFn:   c.handleItem,
-	}}
+	item := &Item{
+		Payload: utils.AsString(d.Body), Options: &Options{
+			multipleAsk: c.multipleAck,
+			requeue:     c.requeueOnFail,
+			requeueFn:   c.handleItem,
+		},
+	}
 
 	if _, ok := d.Headers[jobs.RRID].(string); !ok {
-		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRID))
+		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRID), errors.Decode)
 	}
 
 	item.Ident = d.Headers[jobs.RRID].(string)
 
 	if _, ok := d.Headers[jobs.RRJob].(string); !ok {
-		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRJob))
+		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRJob), errors.Decode)
 	}
 
 	item.Job = d.Headers[jobs.RRJob].(string)
@@ -256,7 +290,7 @@ func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
 	if h, ok := d.Headers[jobs.RRHeaders].([]byte); ok {
 		err := json.Unmarshal(h, &item.Headers)
 		if err != nil {
-			return nil, err
+			return nil, errors.E(err, errors.Decode)
 		}
 	}
 
