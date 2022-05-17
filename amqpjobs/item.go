@@ -17,6 +17,10 @@ import (
 
 var _ jobs.Acknowledger = (*Item)(nil)
 
+const (
+	auto string = "deduced_by_rr"
+)
+
 type Item struct {
 	// Job contains pluginName of job broker (usually PHP class).
 	Job string `json:"job"`
@@ -169,14 +173,14 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 
 		if errors.Is(errors.Decode, err) && c.consumeAll {
 			return &Item{
-				Job:     "custom",
+				Job:     auto,
 				Ident:   id,
 				Payload: utils.AsString(d.Body),
 				Headers: convHeaders(d.Headers),
 				Options: &Options{
 					Priority:    10,
 					Delay:       0,
-					Pipeline:    "raw",
+					Pipeline:    auto,
 					ack:         d.Ack,
 					nack:        d.Nack,
 					requeueFn:   c.handleItem,
