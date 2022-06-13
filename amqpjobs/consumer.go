@@ -340,6 +340,7 @@ func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 		pipe := c.pipeline.Load().(*pipeline.Pipeline)
 
 		return &jobs.State{
+			Priority: uint64(pipe.Priority()),
 			Pipeline: pipe.Name(),
 			Driver:   pipe.Driver(),
 			Queue:    q.Name,
