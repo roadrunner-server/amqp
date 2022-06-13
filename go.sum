@@ -20,8 +20,6 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rabbitmq/amqp091-go v1.3.4 h1:tXuIslN1nhDqs2t6Jrz3BAoqvt4qIZzxvdbdcxWtHYU=
 github.com/rabbitmq/amqp091-go v1.3.4/go.mod h1:ogQDLSOACsLPsIq0NpbtiifNZi2YOz0VTJ0kHRghqbM=
-github.com/roadrunner-server/api/v2 v2.17.1 h1:uxjmFwHwdce/tG5oRaLGJ7iiGMOEWcx9/gSRXyCH84g=
-github.com/roadrunner-server/api/v2 v2.17.1/go.mod h1:eAFjmf/u+ZBubzIUEjw1fJKYMExK2YnKqNuiepsFveo=
 github.com/roadrunner-server/api/v2 v2.18.0 h1:xKvlKmgTyQjP+AUMMYL0M/Wk7iyp+bG4qrfp+pCrnLE=
 github.com/roadrunner-server/api/v2 v2.18.0/go.mod h1:F4B43HFTLyZee+YHPMY7c3kaVwONNlbjU+UdTq5pmq8=
 github.com/roadrunner-server/errors v1.1.2 h1:+LPw9Akgg+8LAGM4wASMWLAoBIbyP+mhNfR+FBS2Slw=
