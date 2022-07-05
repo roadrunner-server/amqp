@@ -3,6 +3,7 @@ package amqpjobs
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -181,6 +182,12 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 	conf.InitDefault()
 	// PARSE CONFIGURATION -------
 
+	// parse prefetch
+	prf, err := strconv.Atoi(pipeline.String(prefetch, "10"))
+	if err != nil {
+		log.Error("prefetch parse, driver will use default (10) prefetch", zap.String("prefetch", pipeline.String(prefetch, "10")))
+	}
+
 	jb := &Consumer{
 		log:          log,
 		pq:           pq,
@@ -203,7 +210,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Co
 		queue:             pipeline.String(queue, "default"),
 		exchangeType:      pipeline.String(exchangeType, "direct"),
 		exchangeName:      pipeline.String(exchangeKey, "amqp.default"),
-		prefetch:          pipeline.Int(prefetch, 10),
+		prefetch:          prf,
 		priority:          int64(pipeline.Int(priority, 10)),
 		durable:           pipeline.Bool(durable, false),
 		deleteQueueOnStop: pipeline.Bool(deleteOnStop, false),
