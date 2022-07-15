@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.3
-	github.com/goccy/go-json v0.9.8
+	github.com/goccy/go-json v0.9.10
 	github.com/google/uuid v1.3.0
 	github.com/rabbitmq/amqp091-go v1.3.4
 	github.com/roadrunner-server/api/v2 v2.18.0
