@@ -501,7 +501,7 @@ func (c *Consumer) handleItem(ctx context.Context, msg *Item) error {
 			}
 
 			// insert to the local, limited pipeline
-			err = pch.Publish(c.exchangeName, tmpQ, false, false, amqp.Publishing{
+			err = pch.PublishWithContext(ctx, c.exchangeName, tmpQ, false, false, amqp.Publishing{
 				Headers:      table,
 				ContentType:  contentType,
 				Timestamp:    time.Now(),
@@ -517,7 +517,7 @@ func (c *Consumer) handleItem(ctx context.Context, msg *Item) error {
 			return nil
 		}
 
-		err = pch.Publish(c.exchangeName, c.routingKey, false, false, amqp.Publishing{
+		err = pch.PublishWithContext(ctx, c.exchangeName, c.routingKey, false, false, amqp.Publishing{
 			Headers:      table,
 			ContentType:  contentType,
 			Timestamp:    time.Now(),
