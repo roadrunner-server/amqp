@@ -1,6 +1,6 @@
 module github.com/roadrunner-server/amqp/v2
 
-go 1.18
+go 1.19
 
 require (
 	github.com/cenkalti/backoff/v4 v4.1.3
