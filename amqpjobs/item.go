@@ -161,10 +161,16 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 	item, err := c.unpack(d)
 	if err != nil {
 		// can't decode the delivery
-
 		if errors.Is(errors.Decode, err) && c.consumeAll {
 			id := uuid.NewString()
 			c.log.Debug("get raw payload", zap.String("assigned ID", id))
+
+			if isJSONEncoded(d.Body) != nil {
+				d.Body, err = json.Marshal(d.Body)
+				if err != nil {
+					return nil, err
+				}
+			}
 
 			return &Item{
 				Job:     auto,
@@ -314,4 +320,9 @@ func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
 	}
 
 	return item, nil
+}
+
+func isJSONEncoded(data []byte) error {
+	var a any
+	return json.Unmarshal(data, &a)
 }
