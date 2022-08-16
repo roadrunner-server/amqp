@@ -6,7 +6,6 @@ import (
 
 	"github.com/cenkalti/backoff/v4"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v2/plugins/jobs/pipeline"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
@@ -185,7 +184,7 @@ func (c *Consumer) redial(amqpErr *amqp.Error) {
 	c.reset()
 
 	t := time.Now().UTC()
-	pipe := c.pipeline.Load().(*pipeline.Pipeline)
+	pipe := c.pipeline.Load()
 
 	c.log.Error("pipeline connection was closed, redialing", zap.Error(amqpErr), zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t))
 

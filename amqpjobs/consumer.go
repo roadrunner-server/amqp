@@ -27,7 +27,7 @@ type Consumer struct {
 	sync.Mutex
 	log        *zap.Logger
 	pq         priorityqueue.Queue
-	pipeline   atomic.Value
+	pipeline   atomic.Pointer[pipeline.Pipeline]
 	consumeAll bool
 
 	// amqp connection notifiers
@@ -266,7 +266,7 @@ func (c *Consumer) Push(ctx context.Context, job *jobs.Job) error {
 	// check if the pipeline registered
 
 	// load atomic value
-	pipe := c.pipeline.Load().(*pipeline.Pipeline)
+	pipe := c.pipeline.Load()
 	if pipe.Name() != job.Options.Pipeline {
 		return errors.E(op, errors.Errorf("no such pipeline: %s, actual: %s", job.Options.Pipeline, pipe.Name()))
 	}
@@ -288,7 +288,7 @@ func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 	start := time.Now()
 	const op = errors.Op("rabbit_run")
 
-	pipe := c.pipeline.Load().(*pipeline.Pipeline)
+	pipe := c.pipeline.Load()
 	if pipe.Name() != p.Name() {
 		return errors.E(op, errors.Errorf("no such pipeline registered: %s", pipe.Name()))
 	}
@@ -344,7 +344,7 @@ func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 			return nil, errors.E(op, err)
 		}
 
-		pipe := c.pipeline.Load().(*pipeline.Pipeline)
+		pipe := c.pipeline.Load()
 
 		return &jobs.State{
 			Priority: uint64(pipe.Priority()),
@@ -363,7 +363,7 @@ func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 
 func (c *Consumer) Pause(_ context.Context, p string) {
 	start := time.Now()
-	pipe := c.pipeline.Load().(*pipeline.Pipeline)
+	pipe := c.pipeline.Load()
 	if pipe.Name() != p {
 		c.log.Error("no such pipeline", zap.String("requested", p))
 	}
@@ -397,7 +397,7 @@ func (c *Consumer) Pause(_ context.Context, p string) {
 
 func (c *Consumer) Resume(_ context.Context, p string) {
 	start := time.Now()
-	pipe := c.pipeline.Load().(*pipeline.Pipeline)
+	pipe := c.pipeline.Load()
 	if pipe.Name() != p {
 		c.log.Error("no such pipeline", zap.String("requested", p))
 	}
@@ -454,7 +454,7 @@ func (c *Consumer) Stop(context.Context) error {
 	atomic.StoreUint32(&c.stopped, 1)
 	c.stopCh <- struct{}{}
 
-	pipe := c.pipeline.Load().(*pipeline.Pipeline)
+	pipe := c.pipeline.Load()
 	c.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 	close(c.redialCh)
 	return nil
