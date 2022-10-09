@@ -1,7 +1,7 @@
 package amqp
 
 import (
-	"github.com/roadrunner-server/amqp/v2/amqpjobs"
+	"github.com/roadrunner-server/amqp/v3/amqpjobs"
 	"github.com/roadrunner-server/sdk/v3/plugins/jobs"
 	"github.com/roadrunner-server/sdk/v3/plugins/jobs/pipeline"
 	priorityqueue "github.com/roadrunner-server/sdk/v3/priority_queue"
