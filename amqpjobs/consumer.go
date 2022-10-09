@@ -10,14 +10,21 @@ import (
 
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	cfgPlugin "github.com/roadrunner-server/api/v2/plugins/config"
-	"github.com/roadrunner-server/api/v2/plugins/jobs"
-	"github.com/roadrunner-server/api/v2/plugins/jobs/pipeline"
-	priorityqueue "github.com/roadrunner-server/api/v2/pq"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v2/utils"
+	"github.com/roadrunner-server/sdk/v3/plugins/jobs"
+	"github.com/roadrunner-server/sdk/v3/plugins/jobs/pipeline"
+	priorityqueue "github.com/roadrunner-server/sdk/v3/priority_queue"
+	"github.com/roadrunner-server/sdk/v3/utils"
 	"go.uber.org/zap"
 )
+
+type Configurer interface {
+	// UnmarshalKey takes a single key and unmarshals it into a Struct.
+	UnmarshalKey(name string, out any) error
+
+	// Has checks if config section exists.
+	Has(name string) bool
+}
 
 const (
 	pluginName string = "amqp"
@@ -64,7 +71,7 @@ type Consumer struct {
 }
 
 // NewAMQPConsumer initializes rabbitmq pipeline
-func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer, pq priorityqueue.Queue) (*Consumer, error) {
+func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq priorityqueue.Queue) (*Consumer, error) {
 	const op = errors.Op("new_amqp_consumer")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -162,7 +169,7 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg cfgPlugin.Configurer
 	return jb, nil
 }
 
-func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg cfgPlugin.Configurer, pq priorityqueue.Queue) (*Consumer, error) {
+func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, pq priorityqueue.Queue) (*Consumer, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
