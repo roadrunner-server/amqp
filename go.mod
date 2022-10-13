@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/rabbitmq/amqp091-go v1.5.0
 	github.com/roadrunner-server/errors v1.2.0
-	github.com/roadrunner-server/sdk/v3 v3.0.0-beta.3
+	github.com/roadrunner-server/sdk/v3 v3.0.0-beta.4
 	github.com/stretchr/testify v1.8.0
 	go.uber.org/zap v1.23.0
 )
