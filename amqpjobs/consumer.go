@@ -64,6 +64,11 @@ type Consumer struct {
 	durable           bool
 	deleteQueueOnStop bool
 
+	// new in 2.12
+	exchangeDurable    bool
+	exchangeAutoDelete bool
+	queueAutoDelete    bool
+
 	listeners uint32
 	delayed   *int64
 	stopCh    chan struct{}
@@ -131,6 +136,10 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 		exclusive:         conf.Exclusive,
 		multipleAck:       conf.MultipleAck,
 		requeueOnFail:     conf.RequeueOnFail,
+
+		exchangeAutoDelete: conf.ExchangeAutoDelete,
+		exchangeDurable:    conf.ExchangeDurable,
+		queueAutoDelete:    conf.QueueAutoDelete,
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)
@@ -224,6 +233,11 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 		exclusive:         pipeline.Bool(exclusive, false),
 		multipleAck:       pipeline.Bool(multipleAsk, false),
 		requeueOnFail:     pipeline.Bool(requeueOnFail, false),
+
+		// new in 2.12
+		exchangeAutoDelete: pipeline.Bool(exchangeAutoDelete, false),
+		exchangeDurable:    pipeline.Bool(exchangeAutoDelete, false),
+		queueAutoDelete:    pipeline.Bool(queueAutoDelete, false),
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)

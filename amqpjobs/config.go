@@ -15,6 +15,11 @@ const (
 	multipleAsk   string = "multiple_ask"
 	requeueOnFail string = "requeue_on_fail"
 
+	// new in 2.12
+	exchangeDurable    string = "exchange_durable"
+	exchangeAutoDelete string = "exchange_auto_delete"
+	queueAutoDelete    string = "queue_auto_delete"
+
 	dlx           string = "x-dead-letter-exchange"
 	dlxRoutingKey string = "x-dead-letter-routing-key"
 	dlxTTL        string = "x-message-ttl"
@@ -29,11 +34,17 @@ type config struct {
 	Addr string `mapstructure:"addr"`
 
 	// local
-	Prefetch          int    `mapstructure:"prefetch"`
-	Queue             string `mapstructure:"queue"`
-	Priority          int64  `mapstructure:"priority"`
-	Exchange          string `mapstructure:"exchange"`
-	ExchangeType      string `mapstructure:"exchange_type"`
+	Prefetch     int    `mapstructure:"prefetch"`
+	Queue        string `mapstructure:"queue"`
+	Priority     int64  `mapstructure:"priority"`
+	Exchange     string `mapstructure:"exchange"`
+	ExchangeType string `mapstructure:"exchange_type"`
+
+	// new in 2.12
+	ExchangeDurable    bool `mapstructure:"exchange_durable"`
+	ExchangeAutoDelete bool `mapstructure:"exchange_auto_delete"`
+	QueueAutoDelete    bool `mapstructure:"queue_auto_delete"`
+
 	RoutingKey        string `mapstructure:"routing_key"`
 	ConsumeAll        bool   `mapstructure:"consume_all"`
 	Exclusive         bool   `mapstructure:"exclusive"`
