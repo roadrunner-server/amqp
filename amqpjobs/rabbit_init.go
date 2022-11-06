@@ -18,8 +18,8 @@ func (c *Consumer) initRabbitMQ() error {
 	err = channel.ExchangeDeclare(
 		c.exchangeName,
 		c.exchangeType,
-		true,
-		false,
+		c.exchangeDurable,
+		c.exchangeAutoDelete,
 		false,
 		false,
 		nil,
@@ -32,7 +32,7 @@ func (c *Consumer) initRabbitMQ() error {
 	q, err := channel.QueueDeclare(
 		c.queue,
 		c.durable,
-		false,
+		c.queueAutoDelete,
 		c.exclusive,
 		false,
 		nil,
