@@ -16,6 +16,7 @@ const (
 	requeueOnFail string = "requeue_on_fail"
 
 	// new in 2.12
+	redialTimeout      string = "redial_timeout"
 	exchangeDurable    string = "exchange_durable"
 	exchangeAutoDelete string = "exchange_auto_delete"
 	queueAutoDelete    string = "queue_auto_delete"
@@ -44,6 +45,7 @@ type config struct {
 	ExchangeDurable    bool `mapstructure:"exchange_durable"`
 	ExchangeAutoDelete bool `mapstructure:"exchange_auto_delete"`
 	QueueAutoDelete    bool `mapstructure:"queue_auto_delete"`
+	RedialTimeout      int  `mapstructure:"redial_timeout"`
 
 	RoutingKey        string `mapstructure:"routing_key"`
 	ConsumeAll        bool   `mapstructure:"consume_all"`
@@ -66,6 +68,10 @@ func (c *config) InitDefault() {
 
 	if c.Queue == "" {
 		c.Queue = "default"
+	}
+
+	if c.RedialTimeout == 0 {
+		c.RedialTimeout = 60
 	}
 
 	if c.Prefetch == 0 {
