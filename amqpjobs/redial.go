@@ -171,9 +171,9 @@ func (c *Consumer) reset() {
 func (c *Consumer) redialMergeCh() {
 	go func() {
 		for err := range c.redialCh {
-			c.Lock()
+			c.mu.Lock()
 			c.redial(err)
-			c.Unlock()
+			c.mu.Unlock()
 		}
 	}()
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v3/plugins/jobs"
 	"github.com/roadrunner-server/sdk/v3/plugins/jobs/pipeline"
+	"github.com/roadrunner-server/sdk/v3/plugins/status"
 	priorityqueue "github.com/roadrunner-server/sdk/v3/priority_queue"
 	"github.com/roadrunner-server/sdk/v3/utils"
 	"go.uber.org/zap"
@@ -31,7 +32,7 @@ const (
 )
 
 type Consumer struct {
-	sync.Mutex
+	mu         sync.Mutex
 	log        *zap.Logger
 	pq         priorityqueue.Queue
 	pipeline   atomic.Pointer[pipeline.Pipeline]
@@ -113,9 +114,8 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 		stopCh:     make(chan struct{}, 1),
 		consumeAll: conf.ConsumeAll,
 
-		retryTimeout: time.Minute,
-		priority:     conf.Priority,
-		delayed:      utils.Int64(0),
+		priority: conf.Priority,
+		delayed:  utils.Int64(0),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -137,6 +137,8 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 		multipleAck:       conf.MultipleAck,
 		requeueOnFail:     conf.RequeueOnFail,
 
+		// 2.12
+		retryTimeout:       time.Duration(conf.RedialTimeout) * time.Second,
 		exchangeAutoDelete: conf.ExchangeAutoDelete,
 		exchangeDurable:    conf.ExchangeDurable,
 		queueAutoDelete:    conf.QueueAutoDelete,
@@ -205,12 +207,11 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 	}
 
 	jb := &Consumer{
-		log:          log,
-		pq:           pq,
-		consumeID:    uuid.NewString(),
-		stopCh:       make(chan struct{}, 1),
-		retryTimeout: time.Minute,
-		delayed:      utils.Int64(0),
+		log:       log,
+		pq:        pq,
+		consumeID: uuid.NewString(),
+		stopCh:    make(chan struct{}, 1),
+		delayed:   utils.Int64(0),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -235,8 +236,9 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 		requeueOnFail:     pipeline.Bool(requeueOnFail, false),
 
 		// new in 2.12
+		retryTimeout:       time.Duration(pipeline.Int(redialTimeout, 60)) * time.Second,
 		exchangeAutoDelete: pipeline.Bool(exchangeAutoDelete, false),
-		exchangeDurable:    pipeline.Bool(exchangeAutoDelete, false),
+		exchangeDurable:    pipeline.Bool(exchangeDurable, false),
 		queueAutoDelete:    pipeline.Bool(queueAutoDelete, false),
 	}
 
@@ -315,8 +317,8 @@ func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 	}
 
 	// protect connection (redial)
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	var err error
 	c.consumeChan, err = c.conn.Channel()
@@ -399,8 +401,8 @@ func (c *Consumer) Pause(_ context.Context, p string) {
 	atomic.AddUint32(&c.listeners, ^uint32(0))
 
 	// protect connection (redial)
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	err := c.consumeChan.Cancel(c.consumeID, true)
 	if err != nil {
@@ -424,8 +426,8 @@ func (c *Consumer) Resume(_ context.Context, p string) {
 	}
 
 	// protect connection (redial)
-	c.Lock()
-	defer c.Unlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	l := atomic.LoadUint32(&c.listeners)
 	// no active listeners
@@ -479,6 +481,32 @@ func (c *Consumer) Stop(context.Context) error {
 	c.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 	close(c.redialCh)
 	return nil
+}
+
+func (c *Consumer) Status() (*status.Status, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	ch, err := c.conn.Channel()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		_ = ch.Close()
+	}()
+
+	_, err = ch.QueueInspect(c.queue)
+	if err != nil {
+		c.log.Error("queue inspect", zap.Error(err))
+		return &status.Status{
+			Code: 500,
+		}, nil
+	}
+
+	return &status.Status{
+		Code: 200,
+	}, nil
 }
 
 // handleItem
