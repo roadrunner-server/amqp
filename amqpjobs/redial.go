@@ -10,6 +10,18 @@ import (
 	"go.uber.org/zap"
 )
 
+const (
+	ConnCloseType    string = "connection"
+	ConsumeCloseType string = "consume"
+	PublishCloseType string = "publish"
+	StatCloseType    string = "stat"
+)
+
+type redialMsg struct {
+	t   string
+	err *amqp.Error
+}
+
 // redialer used to redial to the rabbitmq in case of the connection interrupts
 func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 	go func() {
@@ -28,7 +40,10 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				select {
-				case c.redialCh <- err:
+				case c.redialCh <- &redialMsg{
+					t:   ConnCloseType,
+					err: err,
+				}:
 					c.log.Debug("exited from redialer")
 					return
 				default:
@@ -49,13 +64,17 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				select {
-				case c.redialCh <- err:
+				case c.redialCh <- &redialMsg{
+					t:   ConsumeCloseType,
+					err: err,
+				}:
 					c.log.Debug("exited from redialer")
 					return
 				default:
 					c.log.Debug("exited from redialer")
 					return
 				}
+
 			case err := <-c.notifyClosePubCh:
 				if err == nil {
 					c.log.Debug("exited from redialer")
@@ -69,13 +88,17 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				select {
-				case c.redialCh <- err:
+				case c.redialCh <- &redialMsg{
+					t:   PublishCloseType,
+					err: err,
+				}:
 					c.log.Debug("exited from redialer")
 					return
 				default:
 					c.log.Debug("exited from redialer")
 					return
 				}
+
 			case err := <-c.notifyCloseStatCh:
 				if err == nil {
 					c.log.Debug("redialer stopped")
@@ -89,7 +112,10 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				select {
-				case c.redialCh <- err:
+				case c.redialCh <- &redialMsg{
+					t:   StatCloseType,
+					err: err,
+				}:
 					c.log.Debug("redialer stopped")
 					return
 				default:
@@ -170,15 +196,15 @@ func (c *Consumer) reset() {
 
 func (c *Consumer) redialMergeCh() {
 	go func() {
-		for err := range c.redialCh {
+		for rm := range c.redialCh {
 			c.mu.Lock()
-			c.redial(err)
+			c.redial(rm)
 			c.mu.Unlock()
 		}
 	}()
 }
 
-func (c *Consumer) redial(amqpErr *amqp.Error) {
+func (c *Consumer) redial(rm *redialMsg) {
 	const op = errors.Op("rabbitmq_redial")
 	// trash the broken publishing channel
 	c.reset()
@@ -186,7 +212,7 @@ func (c *Consumer) redial(amqpErr *amqp.Error) {
 	t := time.Now().UTC()
 	pipe := c.pipeline.Load()
 
-	c.log.Error("pipeline connection was closed, redialing", zap.Error(amqpErr), zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t))
+	c.log.Error("pipeline connection was closed, redialing", zap.Error(rm.err), zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t))
 
 	expb := backoff.NewExponentialBackOff()
 	// set the retry timeout (minutes)
@@ -247,10 +273,8 @@ func (c *Consumer) redial(amqpErr *amqp.Error) {
 		c.notifyClosePubCh = make(chan *amqp.Error, 1)
 		c.notifyCloseStatCh = make(chan *amqp.Error, 1)
 		c.notifyCloseConnCh = make(chan *amqp.Error, 1)
-		c.notifyCloseConsumeCh = make(chan *amqp.Error, 1)
 
 		c.conn.NotifyClose(c.notifyCloseConnCh)
-		c.consumeChan.NotifyClose(c.notifyCloseConsumeCh)
 		pch.NotifyClose(c.notifyClosePubCh)
 		sch.NotifyClose(c.notifyCloseStatCh)
 
@@ -258,9 +282,20 @@ func (c *Consumer) redial(amqpErr *amqp.Error) {
 		c.stateChan <- sch
 		c.publishChan <- pch
 
-		// restart listener
-		atomic.StoreUint32(&c.listeners, 1)
-		c.listener(deliv)
+		// we should restore the listener only when we previously had an active listener
+		// OR if we get a Consume Closed type of the error
+		if atomic.LoadUint32(&c.listeners) == 1 || rm.t == ConsumeCloseType {
+			c.notifyCloseConsumeCh = make(chan *amqp.Error, 1)
+			c.consumeChan.NotifyClose(c.notifyCloseConsumeCh)
+			// restart listener
+			err = c.declareQueue()
+			if err != nil {
+				return err
+			}
+
+			atomic.StoreUint32(&c.listeners, 1)
+			c.listener(deliv)
+		}
 
 		c.log.Info("queues and subscribers was redeclared successfully")
 

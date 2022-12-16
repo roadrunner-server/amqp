@@ -28,6 +28,16 @@ func (c *Consumer) initRabbitMQ() error {
 		return errors.E(op, err)
 	}
 
+	return channel.Close()
+}
+
+func (c *Consumer) declareQueue() error {
+	const op = errors.Op("jobs_plugin_rmq_queue_declare")
+	channel, err := c.conn.Channel()
+	if err != nil {
+		return errors.E(op, err)
+	}
+
 	// verify or declare a queue
 	q, err := channel.QueueDeclare(
 		c.queue,
@@ -35,7 +45,7 @@ func (c *Consumer) initRabbitMQ() error {
 		c.queueAutoDelete,
 		c.exclusive,
 		false,
-		nil,
+		c.queueTable,
 	)
 	if err != nil {
 		return errors.E(op, err)
