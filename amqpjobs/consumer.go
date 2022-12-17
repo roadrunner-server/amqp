@@ -71,7 +71,7 @@ type Consumer struct {
 	queueAutoDelete    bool
 
 	// new in 2.12.2
-	queueTable map[string]any
+	queueHeaders map[string]any
 
 	listeners uint32
 	delayed   *int64
@@ -146,7 +146,7 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 		exchangeDurable:    conf.ExchangeDurable,
 		queueAutoDelete:    conf.QueueAutoDelete,
 		// 2.12.2
-		queueTable: conf.QueueTable,
+		queueHeaders: conf.QueueHeaders,
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)
@@ -247,12 +247,12 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 		queueAutoDelete:    pipeline.Bool(queueAutoDelete, false),
 
 		// 2.12.2
-		queueTable: nil,
+		queueHeaders: nil,
 	}
 
-	v := pipeline.Get(queueTable)
+	v := pipeline.Get(queueHeaders)
 	if val, ok := v.(map[string]any); ok {
-		jb.queueTable = val
+		jb.queueHeaders = val
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)

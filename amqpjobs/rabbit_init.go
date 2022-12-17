@@ -45,7 +45,7 @@ func (c *Consumer) declareQueue() error {
 		c.queueAutoDelete,
 		c.exclusive,
 		false,
-		c.queueTable,
+		c.queueHeaders,
 	)
 	if err != nil {
 		return errors.E(op, err)

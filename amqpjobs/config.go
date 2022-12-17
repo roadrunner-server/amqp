@@ -27,7 +27,7 @@ const (
 	dlxExpires    string = "x-expires"
 
 	// new in 2.12.2
-	queueTable string = "queue_table"
+	queueHeaders string = "queue_headers"
 
 	contentType string = "application/octet-stream"
 )
@@ -59,7 +59,7 @@ type config struct {
 	RedialTimeout      int  `mapstructure:"redial_timeout"`
 
 	// new in 2.12.2
-	QueueTable map[string]any `mapstructure:"queue_table"`
+	QueueHeaders map[string]any `mapstructure:"queue_headers"`
 }
 
 func (c *config) InitDefault() {
