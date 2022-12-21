@@ -26,6 +26,9 @@ const (
 	dlxTTL        string = "x-message-ttl"
 	dlxExpires    string = "x-expires"
 
+	// new in 2.12.2
+	queueHeaders string = "queue_headers"
+
 	contentType string = "application/octet-stream"
 )
 
@@ -41,12 +44,6 @@ type config struct {
 	Exchange     string `mapstructure:"exchange"`
 	ExchangeType string `mapstructure:"exchange_type"`
 
-	// new in 2.12
-	ExchangeDurable    bool `mapstructure:"exchange_durable"`
-	ExchangeAutoDelete bool `mapstructure:"exchange_auto_delete"`
-	QueueAutoDelete    bool `mapstructure:"queue_auto_delete"`
-	RedialTimeout      int  `mapstructure:"redial_timeout"`
-
 	RoutingKey        string `mapstructure:"routing_key"`
 	ConsumeAll        bool   `mapstructure:"consume_all"`
 	Exclusive         bool   `mapstructure:"exclusive"`
@@ -54,6 +51,15 @@ type config struct {
 	DeleteQueueOnStop bool   `mapstructure:"delete_queue_on_stop"`
 	MultipleAck       bool   `mapstructure:"multiple_ask"`
 	RequeueOnFail     bool   `mapstructure:"requeue_on_fail"`
+
+	// new in 2.12.1
+	ExchangeDurable    bool `mapstructure:"exchange_durable"`
+	ExchangeAutoDelete bool `mapstructure:"exchange_auto_delete"`
+	QueueAutoDelete    bool `mapstructure:"queue_auto_delete"`
+	RedialTimeout      int  `mapstructure:"redial_timeout"`
+
+	// new in 2.12.2
+	QueueHeaders map[string]any `mapstructure:"queue_headers"`
 }
 
 func (c *config) InitDefault() {

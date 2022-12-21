@@ -178,9 +178,10 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 				Payload: utils.AsString(d.Body),
 				Headers: convHeaders(d.Headers),
 				Options: &Options{
-					Priority:    10,
-					Delay:       0,
-					Pipeline:    auto,
+					Priority: 10,
+					Delay:    0,
+					// in case of `deduced_by_rr` type of the JOB, we're sending a queue name
+					Pipeline:    c.queue,
 					ack:         d.Ack,
 					nack:        d.Nack,
 					requeueFn:   c.handleItem,

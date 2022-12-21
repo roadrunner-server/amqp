@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/errors"
@@ -43,7 +44,7 @@ type Consumer struct {
 	notifyClosePubCh     chan *amqp.Error
 	notifyCloseConsumeCh chan *amqp.Error
 	notifyCloseStatCh    chan *amqp.Error
-	redialCh             chan *amqp.Error
+	redialCh             chan *redialMsg
 
 	conn        *amqp.Connection
 	consumeChan *amqp.Channel
@@ -69,6 +70,9 @@ type Consumer struct {
 	exchangeDurable    bool
 	exchangeAutoDelete bool
 	queueAutoDelete    bool
+
+	// new in 2.12.2
+	queueHeaders map[string]any
 
 	listeners uint32
 	delayed   *int64
@@ -119,7 +123,7 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
-		redialCh:    make(chan *amqp.Error, 5),
+		redialCh:    make(chan *redialMsg, 5),
 
 		notifyCloseConsumeCh: make(chan *amqp.Error, 1),
 		notifyCloseConnCh:    make(chan *amqp.Error, 1),
@@ -142,6 +146,8 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 		exchangeAutoDelete: conf.ExchangeAutoDelete,
 		exchangeDurable:    conf.ExchangeDurable,
 		queueAutoDelete:    conf.QueueAutoDelete,
+		// 2.12.2
+		queueHeaders: conf.QueueHeaders,
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)
@@ -216,7 +222,7 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
 
-		redialCh:             make(chan *amqp.Error, 5),
+		redialCh:             make(chan *redialMsg, 5),
 		notifyCloseConsumeCh: make(chan *amqp.Error, 1),
 		notifyCloseConnCh:    make(chan *amqp.Error, 1),
 		notifyCloseStatCh:    make(chan *amqp.Error, 1),
@@ -240,6 +246,21 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 		exchangeAutoDelete: pipeline.Bool(exchangeAutoDelete, false),
 		exchangeDurable:    pipeline.Bool(exchangeDurable, false),
 		queueAutoDelete:    pipeline.Bool(queueAutoDelete, false),
+
+		// 2.12.2
+		queueHeaders: nil,
+	}
+
+	v := pipeline.String(queueHeaders, "")
+	if v != "" {
+		var tp map[string]any
+		err = json.Unmarshal([]byte(v), &tp)
+		if err != nil {
+			log.Warn("failed to unmarshal headers", zap.String("value", v))
+			return nil, err
+		}
+
+		jb.queueHeaders = tp
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)
@@ -320,7 +341,13 @@ func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
+	// declare/bind/check the queue
 	var err error
+	err = c.declareQueue()
+	if err != nil {
+		return err
+	}
+
 	c.consumeChan, err = c.conn.Channel()
 	if err != nil {
 		return errors.E(op, err)
@@ -437,6 +464,12 @@ func (c *Consumer) Resume(_ context.Context, p string) {
 	}
 
 	var err error
+	err = c.declareQueue()
+	if err != nil {
+		c.log.Error("unable to start listener", zap.Error(err))
+		return
+	}
+
 	c.consumeChan, err = c.conn.Channel()
 	if err != nil {
 		c.log.Error("create channel", zap.Error(err))
