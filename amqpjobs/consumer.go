@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/errors"
@@ -250,9 +251,16 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 		queueHeaders: nil,
 	}
 
-	v := pipeline.Get(queueHeaders)
-	if val, ok := v.(map[string]any); ok {
-		jb.queueHeaders = val
+	v := pipeline.String(queueHeaders, "")
+	if v != "" {
+		var tp map[string]any
+		err = json.Unmarshal([]byte(v), &tp)
+		if err != nil {
+			log.Warn("failed to unmarshal headers", zap.String("value", v))
+			return nil, err
+		}
+
+		jb.queueHeaders = tp
 	}
 
 	jb.conn, err = amqp.Dial(conf.Addr)
