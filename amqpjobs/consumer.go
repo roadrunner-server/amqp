@@ -11,32 +11,31 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/roadrunner-server/api/v3/plugins/v1/jobs"
+	pq "github.com/roadrunner-server/api/v3/plugins/v1/priority_queue"
+	"github.com/roadrunner-server/api/v3/plugins/v1/status"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v3/plugins/jobs"
-	"github.com/roadrunner-server/sdk/v3/plugins/jobs/pipeline"
-	"github.com/roadrunner-server/sdk/v3/plugins/status"
-	priorityqueue "github.com/roadrunner-server/sdk/v3/priority_queue"
 	"github.com/roadrunner-server/sdk/v3/utils"
 	"go.uber.org/zap"
 )
-
-type Configurer interface {
-	// UnmarshalKey takes a single key and unmarshals it into a Struct.
-	UnmarshalKey(name string, out any) error
-
-	// Has checks if config section exists.
-	Has(name string) bool
-}
 
 const (
 	pluginName string = "amqp"
 )
 
+var _ jobs.Consumer = (*Consumer)(nil)
+
+type Configurer interface {
+	// UnmarshalKey takes a single key and unmarshal it into a Struct.
+	UnmarshalKey(name string, out any) error
+	// Has checks if config section exists.
+	Has(name string) bool
+}
 type Consumer struct {
 	mu         sync.Mutex
 	log        *zap.Logger
-	pq         priorityqueue.Queue
-	pipeline   atomic.Pointer[pipeline.Pipeline]
+	pq         pq.Queue
+	pipeline   atomic.Pointer[jobs.Pipeline]
 	consumeAll bool
 
 	// amqp connection notifiers
@@ -80,8 +79,8 @@ type Consumer struct {
 	stopped   uint32
 }
 
-// NewAMQPConsumer initializes rabbitmq pipeline
-func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq priorityqueue.Queue) (*Consumer, error) {
+// FromConfig initializes rabbitmq pipeline
+func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pq pq.Queue) (*Consumer, error) {
 	const op = errors.Op("new_amqp_consumer")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -186,7 +185,8 @@ func NewAMQPConsumer(configKey string, log *zap.Logger, cfg Configurer, pq prior
 	return jb, nil
 }
 
-func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, pq priorityqueue.Queue) (*Consumer, error) {
+// FromPipeline initializes consumer from pipeline
+func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq.Queue) (*Consumer, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -305,14 +305,14 @@ func FromPipeline(pipeline *pipeline.Pipeline, log *zap.Logger, cfg Configurer, 
 	return jb, nil
 }
 
-func (c *Consumer) Push(ctx context.Context, job *jobs.Job) error {
+func (c *Consumer) Push(ctx context.Context, job jobs.Job) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
 	// load atomic value
-	pipe := c.pipeline.Load()
-	if pipe.Name() != job.Options.Pipeline {
-		return errors.E(op, errors.Errorf("no such pipeline: %s, actual: %s", job.Options.Pipeline, pipe.Name()))
+	pipe := *c.pipeline.Load()
+	if pipe.Name() != job.Pipeline() {
+		return errors.E(op, errors.Errorf("no such pipeline: %s, actual: %s", job.Pipeline(), pipe.Name()))
 	}
 
 	err := c.handleItem(ctx, fromJob(job))
@@ -323,16 +323,16 @@ func (c *Consumer) Push(ctx context.Context, job *jobs.Job) error {
 	return nil
 }
 
-func (c *Consumer) Register(_ context.Context, p *pipeline.Pipeline) error {
-	c.pipeline.Store(p)
+func (c *Consumer) Register(_ context.Context, p jobs.Pipeline) error {
+	c.pipeline.Store(&p)
 	return nil
 }
 
-func (c *Consumer) Run(_ context.Context, p *pipeline.Pipeline) error {
+func (c *Consumer) Run(_ context.Context, p jobs.Pipeline) error {
 	start := time.Now()
 	const op = errors.Op("rabbit_run")
 
-	pipe := c.pipeline.Load()
+	pipe := *c.pipeline.Load()
 	if pipe.Name() != p.Name() {
 		return errors.E(op, errors.Errorf("no such pipeline registered: %s", pipe.Name()))
 	}
@@ -394,7 +394,7 @@ func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 			return nil, errors.E(op, err)
 		}
 
-		pipe := c.pipeline.Load()
+		pipe := *c.pipeline.Load()
 
 		return &jobs.State{
 			Priority: uint64(pipe.Priority()),
@@ -413,7 +413,7 @@ func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 
 func (c *Consumer) Pause(_ context.Context, p string) {
 	start := time.Now()
-	pipe := c.pipeline.Load()
+	pipe := *c.pipeline.Load()
 	if pipe.Name() != p {
 		c.log.Error("no such pipeline", zap.String("requested", p))
 	}
@@ -447,7 +447,7 @@ func (c *Consumer) Pause(_ context.Context, p string) {
 
 func (c *Consumer) Resume(_ context.Context, p string) {
 	start := time.Now()
-	pipe := c.pipeline.Load()
+	pipe := *c.pipeline.Load()
 	if pipe.Name() != p {
 		c.log.Error("no such pipeline", zap.String("requested", p))
 	}
@@ -510,7 +510,7 @@ func (c *Consumer) Stop(context.Context) error {
 	atomic.StoreUint32(&c.stopped, 1)
 	c.stopCh <- struct{}{}
 
-	pipe := c.pipeline.Load()
+	pipe := *c.pipeline.Load()
 	c.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 	close(c.redialCh)
 	return nil

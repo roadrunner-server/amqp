@@ -210,7 +210,7 @@ func (c *Consumer) redial(rm *redialMsg) {
 	c.reset()
 
 	t := time.Now().UTC()
-	pipe := c.pipeline.Load()
+	pipe := *c.pipeline.Load()
 
 	c.log.Error("pipeline connection was closed, redialing", zap.Error(rm.err), zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t))
 
