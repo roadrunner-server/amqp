@@ -1,7 +1,7 @@
 package amqp
 
 import (
-	"github.com/roadrunner-server/amqp/v3/amqpjobs"
+	"github.com/roadrunner-server/amqp/v4/amqpjobs"
 	"github.com/roadrunner-server/api/v3/plugins/v1/jobs"
 	pq "github.com/roadrunner-server/api/v3/plugins/v1/priority_queue"
 	"github.com/roadrunner-server/errors"
