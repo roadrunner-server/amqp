@@ -2,8 +2,8 @@ package amqp
 
 import (
 	"github.com/roadrunner-server/amqp/v4/amqpjobs"
-	"github.com/roadrunner-server/api/v3/plugins/v1/jobs"
-	pq "github.com/roadrunner-server/api/v3/plugins/v1/priority_queue"
+	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
+	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
@@ -40,10 +40,12 @@ func (p *Plugin) Name() string {
 	return pluginName
 }
 
-func (p *Plugin) ConsumerFromConfig(configKey string, queue pq.Queue) (jobs.Consumer, error) {
-	return amqpjobs.FromConfig(configKey, p.log, p.cfg, queue)
+// DriverFromConfig constructs kafka driver from the .rr.yaml configuration
+func (p *Plugin) DriverFromConfig(configKey string, pq pq.Queue, pipeline jobs.Pipeline, cmder chan<- jobs.Commander) (jobs.Driver, error) {
+	return amqpjobs.FromConfig(configKey, p.log, p.cfg, pipeline, pq, cmder)
 }
 
-func (p *Plugin) ConsumerFromPipeline(pipe jobs.Pipeline, queue pq.Queue) (jobs.Consumer, error) {
-	return amqpjobs.FromPipeline(pipe, p.log, p.cfg, queue)
+// DriverFromPipeline constructs kafka driver from pipeline
+func (p *Plugin) DriverFromPipeline(pipe jobs.Pipeline, pq pq.Queue, cmder chan<- jobs.Commander) (jobs.Driver, error) {
+	return amqpjobs.FromPipeline(pipe, p.log, p.cfg, pq, cmder)
 }

@@ -9,7 +9,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v3/plugins/v1/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/utils"
 	"go.uber.org/zap"
@@ -59,7 +59,7 @@ type Options struct {
 
 	// nack negatively acknowledge the delivery of message(s) identified by the delivery tag from either the client or server.
 	// When multiple is true, nack messages up to and including delivered messages up until the delivery tag delivered on the same channel.
-	// When requeue is true, request the server to deliver this message to a different Consumer. If it is not possible or requeue is false, the message will be dropped or delivered to a server configured dead-letter queue.
+	// When requeue is true, request the server to deliver this message to a different Driver. If it is not possible or requeue is false, the message will be dropped or delivered to a server configured dead-letter queue.
 	// This method must not be used to select or requeue messages the client wishes not to handle, rather it is to inform the server that the client is incapable of handling this message at this time
 	nack func(multiply bool, requeue bool) error
 
@@ -156,17 +156,17 @@ func (i *Item) Respond(_ []byte, _ string) error {
 }
 
 // fromDelivery converts amqp.Delivery into an Item which will be pushed to the PQ
-func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
+func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 	const op = errors.Op("from_delivery_convert")
-	item, err := c.unpack(d)
+	item, err := d.unpack(deliv)
 	if err != nil {
 		// can't decode the delivery
-		if errors.Is(errors.Decode, err) && c.consumeAll {
+		if errors.Is(errors.Decode, err) && d.consumeAll {
 			id := uuid.NewString()
-			c.log.Debug("get raw payload", zap.String("assigned ID", id))
+			d.log.Debug("get raw payload", zap.String("assigned ID", id))
 
-			if isJSONEncoded(d.Body) != nil {
-				d.Body, err = json.Marshal(d.Body)
+			if isJSONEncoded(deliv.Body) != nil {
+				deliv.Body, err = json.Marshal(deliv.Body)
 				if err != nil {
 					return nil, err
 				}
@@ -175,17 +175,17 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 			return &Item{
 				Job:     auto,
 				Ident:   id,
-				Payload: utils.AsString(d.Body),
-				Headers: convHeaders(d.Headers),
+				Payload: utils.AsString(deliv.Body),
+				Headers: convHeaders(deliv.Headers),
 				Options: &Options{
 					Priority: 10,
 					Delay:    0,
 					// in case of `deduced_by_rr` type of the JOB, we're sending a queue name
-					Pipeline:    c.queue,
-					ack:         d.Ack,
-					nack:        d.Nack,
-					requeueFn:   c.handleItem,
-					delayed:     c.delayed,
+					Pipeline:    d.queue,
+					ack:         deliv.Ack,
+					nack:        deliv.Nack,
+					requeueFn:   d.handleItem,
+					delayed:     d.delayed,
 					AutoAck:     false,
 					multipleAsk: false,
 					requeue:     false,
@@ -206,7 +206,7 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 
 	switch item.Options.AutoAck {
 	case true:
-		c.log.Debug("using auto acknowledge for the job")
+		d.log.Debug("using auto acknowledge for the job")
 		// stubs for ack/nack
 		item.Options.ack = func(_ bool) error {
 			return nil
@@ -216,14 +216,14 @@ func (c *Consumer) fromDelivery(d amqp.Delivery) (*Item, error) {
 			return nil
 		}
 	case false:
-		c.log.Debug("using driver's ack for the job")
-		item.Options.ack = d.Ack
-		item.Options.nack = d.Nack
+		d.log.Debug("using driver's ack for the job")
+		item.Options.ack = deliv.Ack
+		item.Options.nack = deliv.Nack
 	}
 
-	item.Options.delayed = c.delayed
+	item.Options.delayed = d.delayed
 	// requeue func
-	item.Options.requeueFn = c.handleItem
+	item.Options.requeueFn = d.handleItem
 	return i, nil
 }
 
@@ -260,61 +260,61 @@ func pack(id string, j *Item) (amqp.Table, error) {
 }
 
 // unpack restores jobs.Options
-func (c *Consumer) unpack(d amqp.Delivery) (*Item, error) {
+func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 	item := &Item{
-		Payload: utils.AsString(d.Body),
+		Payload: utils.AsString(deliv.Body),
 		Options: &Options{
-			multipleAsk: c.multipleAck,
-			requeue:     c.requeueOnFail,
-			requeueFn:   c.handleItem,
+			multipleAsk: d.multipleAck,
+			requeue:     d.requeueOnFail,
+			requeueFn:   d.handleItem,
 		},
 	}
 
-	if _, ok := d.Headers[jobs.RRID].(string); !ok {
+	if _, ok := deliv.Headers[jobs.RRID].(string); !ok {
 		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRID), errors.Decode)
 	}
 
-	item.Ident = d.Headers[jobs.RRID].(string)
+	item.Ident = deliv.Headers[jobs.RRID].(string)
 
-	if _, ok := d.Headers[jobs.RRJob].(string); !ok {
+	if _, ok := deliv.Headers[jobs.RRJob].(string); !ok {
 		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRJob), errors.Decode)
 	}
 
-	item.Job = d.Headers[jobs.RRJob].(string)
+	item.Job = deliv.Headers[jobs.RRJob].(string)
 
-	if _, ok := d.Headers[jobs.RRPipeline].(string); ok {
-		item.Options.Pipeline = d.Headers[jobs.RRPipeline].(string)
+	if _, ok := deliv.Headers[jobs.RRPipeline].(string); ok {
+		item.Options.Pipeline = deliv.Headers[jobs.RRPipeline].(string)
 	}
 
-	if h, ok := d.Headers[jobs.RRHeaders].([]byte); ok {
+	if h, ok := deliv.Headers[jobs.RRHeaders].([]byte); ok {
 		err := json.Unmarshal(h, &item.Headers)
 		if err != nil {
 			return nil, errors.E(err, errors.Decode)
 		}
 	}
 
-	if t, ok := d.Headers[jobs.RRDelay]; ok {
+	if t, ok := deliv.Headers[jobs.RRDelay]; ok {
 		switch t.(type) {
 		case int, int16, int32, int64:
 			item.Options.Delay = t.(int64)
 		default:
-			c.log.Warn("unknown delay type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
+			d.log.Warn("unknown delay type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
 		}
 	}
 
-	if t, ok := d.Headers[jobs.RRPriority]; !ok {
+	if t, ok := deliv.Headers[jobs.RRPriority]; !ok {
 		// set pipe's priority
-		item.Options.Priority = c.priority
+		item.Options.Priority = d.priority
 	} else {
 		switch t.(type) {
 		case int, int16, int32, int64:
 			item.Options.Priority = t.(int64)
 		default:
-			c.log.Warn("unknown priority type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
+			d.log.Warn("unknown priority type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
 		}
 	}
 
-	if aa, ok := d.Headers[jobs.RRAutoAck]; ok {
+	if aa, ok := deliv.Headers[jobs.RRAutoAck]; ok {
 		if val, ok := aa.(bool); ok {
 			item.Options.AutoAck = val
 		}
