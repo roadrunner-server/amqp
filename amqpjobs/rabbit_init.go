@@ -4,22 +4,22 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-func (c *Driver) initRabbitMQ() error {
+func (d *Driver) initRabbitMQ() error {
 	const op = errors.Op("jobs_plugin_rmq_init")
 	// Channel opens a unique, concurrent server channel to process the bulk of AMQP
 	// messages.  Any error from methods on this receiver will render the receiver
 	// invalid and a new Channel should be opened.
-	channel, err := c.conn.Channel()
+	channel, err := d.conn.Channel()
 	if err != nil {
 		return errors.E(op, err)
 	}
 
 	// declare an exchange (idempotent operation)
 	err = channel.ExchangeDeclare(
-		c.exchangeName,
-		c.exchangeType,
-		c.exchangeDurable,
-		c.exchangeAutoDelete,
+		d.exchangeName,
+		d.exchangeType,
+		d.exchangeDurable,
+		d.exchangeAutoDelete,
 		false,
 		false,
 		nil,
@@ -31,21 +31,21 @@ func (c *Driver) initRabbitMQ() error {
 	return channel.Close()
 }
 
-func (c *Driver) declareQueue() error {
+func (d *Driver) declareQueue() error {
 	const op = errors.Op("jobs_plugin_rmq_queue_declare")
-	channel, err := c.conn.Channel()
+	channel, err := d.conn.Channel()
 	if err != nil {
 		return errors.E(op, err)
 	}
 
 	// verify or declare a queue
 	q, err := channel.QueueDeclare(
-		c.queue,
-		c.durable,
-		c.queueAutoDelete,
-		c.exclusive,
+		d.queue,
+		d.durable,
+		d.queueAutoDelete,
+		d.exclusive,
 		false,
-		c.queueHeaders,
+		d.queueHeaders,
 	)
 	if err != nil {
 		return errors.E(op, err)
@@ -54,8 +54,8 @@ func (c *Driver) declareQueue() error {
 	// bind queue to the exchange
 	err = channel.QueueBind(
 		q.Name,
-		c.routingKey,
-		c.exchangeName,
+		d.routingKey,
+		d.exchangeName,
 		false,
 		nil,
 	)

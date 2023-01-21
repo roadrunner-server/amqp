@@ -306,17 +306,17 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 	return jb, nil
 }
 
-func (c *Driver) Push(ctx context.Context, job jobs.Job) error {
+func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
 	// load atomic value
-	pipe := *c.pipeline.Load()
+	pipe := *d.pipeline.Load()
 	if pipe.Name() != job.Pipeline() {
 		return errors.E(op, errors.Errorf("no such pipeline: %s, actual: %s", job.Pipeline(), pipe.Name()))
 	}
 
-	err := c.handleItem(ctx, fromJob(job))
+	err := d.handleItem(ctx, fromJob(job))
 	if err != nil {
 		return errors.E(op, err)
 	}
@@ -324,40 +324,40 @@ func (c *Driver) Push(ctx context.Context, job jobs.Job) error {
 	return nil
 }
 
-func (c *Driver) Run(_ context.Context, p jobs.Pipeline) error {
+func (d *Driver) Run(_ context.Context, p jobs.Pipeline) error {
 	start := time.Now()
 	const op = errors.Op("rabbit_run")
 
-	pipe := *c.pipeline.Load()
+	pipe := *d.pipeline.Load()
 	if pipe.Name() != p.Name() {
 		return errors.E(op, errors.Errorf("no such pipeline registered: %s", pipe.Name()))
 	}
 
 	// protect connection (redial)
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
 	// declare/bind/check the queue
 	var err error
-	err = c.declareQueue()
+	err = d.declareQueue()
 	if err != nil {
 		return err
 	}
 
-	c.consumeChan, err = c.conn.Channel()
+	d.consumeChan, err = d.conn.Channel()
 	if err != nil {
 		return errors.E(op, err)
 	}
 
-	err = c.consumeChan.Qos(c.prefetch, 0, false)
+	err = d.consumeChan.Qos(d.prefetch, 0, false)
 	if err != nil {
 		return errors.E(op, err)
 	}
 
 	// start reading messages from the channel
-	deliv, err := c.consumeChan.Consume(
-		c.queue,
-		c.consumeID,
+	deliv, err := d.consumeChan.Consume(
+		d.queue,
+		d.consumeID,
 		false,
 		false,
 		false,
@@ -368,29 +368,29 @@ func (c *Driver) Run(_ context.Context, p jobs.Pipeline) error {
 		return errors.E(op, err)
 	}
 
-	c.consumeChan.NotifyClose(c.notifyCloseConsumeCh)
+	d.consumeChan.NotifyClose(d.notifyCloseConsumeCh)
 	// run listener
-	c.listener(deliv)
+	d.listener(deliv)
 
-	atomic.StoreUint32(&c.listeners, 1)
-	c.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	atomic.StoreUint32(&d.listeners, 1)
+	d.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 	return nil
 }
 
-func (c *Driver) State(ctx context.Context) (*jobs.State, error) {
+func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 	const op = errors.Op("amqp_driver_state")
 	select {
-	case stateCh := <-c.stateChan:
+	case stateCh := <-d.stateChan:
 		defer func() {
-			c.stateChan <- stateCh
+			d.stateChan <- stateCh
 		}()
 
-		q, err := stateCh.QueueInspect(c.queue)
+		q, err := stateCh.QueueInspect(d.queue)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
 
-		pipe := *c.pipeline.Load()
+		pipe := *d.pipeline.Load()
 
 		return &jobs.State{
 			Priority: uint64(pipe.Priority()),
@@ -398,8 +398,8 @@ func (c *Driver) State(ctx context.Context) (*jobs.State, error) {
 			Driver:   pipe.Driver(),
 			Queue:    q.Name,
 			Active:   int64(q.Messages),
-			Delayed:  atomic.LoadInt64(c.delayed),
-			Ready:    ready(atomic.LoadUint32(&c.listeners)),
+			Delayed:  atomic.LoadInt64(d.delayed),
+			Ready:    ready(atomic.LoadUint32(&d.listeners)),
 		}, nil
 
 	case <-ctx.Done():
@@ -407,77 +407,77 @@ func (c *Driver) State(ctx context.Context) (*jobs.State, error) {
 	}
 }
 
-func (c *Driver) Pause(_ context.Context, p string) error {
+func (d *Driver) Pause(_ context.Context, p string) error {
 	start := time.Now()
-	pipe := *c.pipeline.Load()
+	pipe := *d.pipeline.Load()
 	if pipe.Name() != p {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
 
-	l := atomic.LoadUint32(&c.listeners)
+	l := atomic.LoadUint32(&d.listeners)
 	// no active listeners
 	if l == 0 {
 		return errors.Str("no active listeners, nothing to pause")
 	}
 
-	atomic.AddUint32(&c.listeners, ^uint32(0))
+	atomic.AddUint32(&d.listeners, ^uint32(0))
 
 	// protect connection (redial)
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	err := c.consumeChan.Cancel(c.consumeID, true)
+	err := d.consumeChan.Cancel(d.consumeID, true)
 	if err != nil {
-		c.log.Error("cancel publish channel, forcing close", zap.Error(err))
-		errCl := c.consumeChan.Close()
+		d.log.Error("cancel publish channel, forcing close", zap.Error(err))
+		errCl := d.consumeChan.Close()
 		if errCl != nil {
 			return errCl
 		}
 		return err
 	}
 
-	c.log.Debug("pipeline was paused", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	d.log.Debug("pipeline was paused", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 
 	return nil
 }
 
-func (c *Driver) Resume(_ context.Context, p string) error {
+func (d *Driver) Resume(_ context.Context, p string) error {
 	start := time.Now()
-	pipe := *c.pipeline.Load()
+	pipe := *d.pipeline.Load()
 	if pipe.Name() != p {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
 
 	// protect connection (redial)
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	l := atomic.LoadUint32(&c.listeners)
+	l := atomic.LoadUint32(&d.listeners)
 	// no active listeners
 	if l == 1 {
 		return errors.Str("amqp listener is already in the active state")
 	}
 
 	var err error
-	err = c.declareQueue()
+	err = d.declareQueue()
 	if err != nil {
 		return err
 	}
 
-	c.consumeChan, err = c.conn.Channel()
+	d.consumeChan, err = d.conn.Channel()
 	if err != nil {
 		return err
 	}
 
-	err = c.consumeChan.Qos(c.prefetch, 0, false)
+	err = d.consumeChan.Qos(d.prefetch, 0, false)
 	if err != nil {
 		return err
 	}
 
 	// start reading messages from the channel
-	deliv, err := c.consumeChan.Consume(
-		c.queue,
-		c.consumeID,
+	deliv, err := d.consumeChan.Consume(
+		d.queue,
+		d.consumeID,
 		false,
 		false,
 		false,
@@ -489,31 +489,31 @@ func (c *Driver) Resume(_ context.Context, p string) error {
 	}
 
 	// run listener
-	c.listener(deliv)
+	d.listener(deliv)
 
 	// increase number of listeners
-	atomic.AddUint32(&c.listeners, 1)
-	c.log.Debug("pipeline was resumed", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	atomic.AddUint32(&d.listeners, 1)
+	d.log.Debug("pipeline was resumed", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 
 	return nil
 }
 
-func (c *Driver) Stop(context.Context) error {
+func (d *Driver) Stop(context.Context) error {
 	start := time.Now()
-	atomic.StoreUint32(&c.stopped, 1)
-	c.stopCh <- struct{}{}
+	atomic.StoreUint32(&d.stopped, 1)
+	d.stopCh <- struct{}{}
 
-	pipe := *c.pipeline.Load()
-	c.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
-	close(c.redialCh)
+	pipe := *d.pipeline.Load()
+	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	close(d.redialCh)
 	return nil
 }
 
-func (c *Driver) Status() (*status.Status, error) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
+func (d *Driver) Status() (*status.Status, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
 
-	ch, err := c.conn.Channel()
+	ch, err := d.conn.Channel()
 	if err != nil {
 		return nil, err
 	}
@@ -522,9 +522,9 @@ func (c *Driver) Status() (*status.Status, error) {
 		_ = ch.Close()
 	}()
 
-	_, err = ch.QueueInspect(c.queue)
+	_, err = ch.QueueInspect(d.queue)
 	if err != nil {
-		c.log.Error("queue inspect", zap.Error(err))
+		d.log.Error("queue inspect", zap.Error(err))
 		return &status.Status{
 			Code: 500,
 		}, nil
@@ -536,13 +536,13 @@ func (c *Driver) Status() (*status.Status, error) {
 }
 
 // handleItem
-func (c *Driver) handleItem(ctx context.Context, msg *Item) error {
+func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 	const op = errors.Op("rabbitmq_handle_item")
 	select {
-	case pch := <-c.publishChan:
+	case pch := <-d.publishChan:
 		// return the channel back
 		defer func() {
-			c.publishChan <- pch
+			d.publishChan <- pch
 		}()
 
 		// convert
@@ -553,30 +553,30 @@ func (c *Driver) handleItem(ctx context.Context, msg *Item) error {
 
 		// handle timeouts
 		if msg.Options.DelayDuration() > 0 {
-			atomic.AddInt64(c.delayed, 1)
+			atomic.AddInt64(d.delayed, 1)
 			// TODO declare separate method for this if condition
 			// TODO dlx cache channel??
 			delayMs := int64(msg.Options.DelayDuration().Seconds() * 1000)
-			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, c.exchangeName, c.queue)
+			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, d.exchangeName, d.queue)
 			_, err = pch.QueueDeclare(tmpQ, true, false, false, false, amqp.Table{
-				dlx:           c.exchangeName,
-				dlxRoutingKey: c.routingKey,
+				dlx:           d.exchangeName,
+				dlxRoutingKey: d.routingKey,
 				dlxTTL:        delayMs,
 				dlxExpires:    delayMs * 2,
 			})
 			if err != nil {
-				atomic.AddInt64(c.delayed, ^int64(0))
+				atomic.AddInt64(d.delayed, ^int64(0))
 				return errors.E(op, err)
 			}
 
-			err = pch.QueueBind(tmpQ, tmpQ, c.exchangeName, false, nil)
+			err = pch.QueueBind(tmpQ, tmpQ, d.exchangeName, false, nil)
 			if err != nil {
-				atomic.AddInt64(c.delayed, ^int64(0))
+				atomic.AddInt64(d.delayed, ^int64(0))
 				return errors.E(op, err)
 			}
 
 			// insert to the local, limited pipeline
-			err = pch.PublishWithContext(ctx, c.exchangeName, tmpQ, false, false, amqp.Publishing{
+			err = pch.PublishWithContext(ctx, d.exchangeName, tmpQ, false, false, amqp.Publishing{
 				Headers:      table,
 				ContentType:  contentType,
 				Timestamp:    time.Now(),
@@ -585,14 +585,14 @@ func (c *Driver) handleItem(ctx context.Context, msg *Item) error {
 			})
 
 			if err != nil {
-				atomic.AddInt64(c.delayed, ^int64(0))
+				atomic.AddInt64(d.delayed, ^int64(0))
 				return errors.E(op, err)
 			}
 
 			return nil
 		}
 
-		err = pch.PublishWithContext(ctx, c.exchangeName, c.routingKey, false, false, amqp.Publishing{
+		err = pch.PublishWithContext(ctx, d.exchangeName, d.routingKey, false, false, amqp.Publishing{
 			Headers:      table,
 			ContentType:  contentType,
 			Timestamp:    time.Now(),
