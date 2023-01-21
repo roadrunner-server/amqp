@@ -23,7 +23,7 @@ type redialMsg struct {
 }
 
 // redialer used to redial to the rabbitmq in case of the connection interrupts
-func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
+func (c *Driver) redialer() { //nolint:gocognit,gocyclo
 	go func() {
 		for {
 			select {
@@ -166,7 +166,7 @@ func (c *Consumer) redialer() { //nolint:gocognit,gocyclo
 	}()
 }
 
-func (c *Consumer) reset() {
+func (c *Driver) reset() {
 	pch := <-c.publishChan
 	stCh := <-c.stateChan
 
@@ -194,7 +194,7 @@ func (c *Consumer) reset() {
 	}
 }
 
-func (c *Consumer) redialMergeCh() {
+func (c *Driver) redialMergeCh() {
 	go func() {
 		for rm := range c.redialCh {
 			c.mu.Lock()
@@ -204,7 +204,7 @@ func (c *Consumer) redialMergeCh() {
 	}()
 }
 
-func (c *Consumer) redial(rm *redialMsg) {
+func (c *Driver) redial(rm *redialMsg) {
 	const op = errors.Op("rabbitmq_redial")
 	// trash the broken publishing channel
 	c.reset()

@@ -7,7 +7,7 @@ import (
 	"go.uber.org/zap"
 )
 
-func (c *Consumer) listener(deliv <-chan amqp.Delivery) {
+func (c *Driver) listener(deliv <-chan amqp.Delivery) {
 	go func() {
 		for msg := range deliv {
 			d, err := c.fromDelivery(msg)

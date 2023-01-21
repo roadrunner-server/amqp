@@ -4,7 +4,7 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-func (c *Consumer) initRabbitMQ() error {
+func (c *Driver) initRabbitMQ() error {
 	const op = errors.Op("jobs_plugin_rmq_init")
 	// Channel opens a unique, concurrent server channel to process the bulk of AMQP
 	// messages.  Any error from methods on this receiver will render the receiver
@@ -31,7 +31,7 @@ func (c *Consumer) initRabbitMQ() error {
 	return channel.Close()
 }
 
-func (c *Consumer) declareQueue() error {
+func (c *Driver) declareQueue() error {
 	const op = errors.Op("jobs_plugin_rmq_queue_declare")
 	channel, err := c.conn.Channel()
 	if err != nil {

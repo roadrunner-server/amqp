@@ -11,9 +11,9 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v3/plugins/v1/jobs"
-	pq "github.com/roadrunner-server/api/v3/plugins/v1/priority_queue"
-	"github.com/roadrunner-server/api/v3/plugins/v1/status"
+	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
+	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
+	"github.com/roadrunner-server/api/v4/plugins/v1/status"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/sdk/v4/utils"
 	"go.uber.org/zap"
@@ -23,7 +23,7 @@ const (
 	pluginName string = "amqp"
 )
 
-var _ jobs.Consumer = (*Consumer)(nil)
+var _ jobs.Driver = (*Driver)(nil)
 
 type Configurer interface {
 	// UnmarshalKey takes a single key and unmarshal it into a Struct.
@@ -31,7 +31,7 @@ type Configurer interface {
 	// Has checks if config section exists.
 	Has(name string) bool
 }
-type Consumer struct {
+type Driver struct {
 	mu         sync.Mutex
 	log        *zap.Logger
 	pq         pq.Queue
@@ -80,7 +80,7 @@ type Consumer struct {
 }
 
 // FromConfig initializes rabbitmq pipeline
-func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pq pq.Queue) (*Consumer, error) {
+func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq pq.Queue, _ chan<- jobs.Commander) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -110,7 +110,7 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pq pq.Queue) 
 	conf.InitDefault()
 	// PARSE CONFIGURATION END -------
 
-	jb := &Consumer{
+	jb := &Driver{
 		log:        log,
 		pq:         pq,
 		consumeID:  uuid.NewString(),
@@ -171,6 +171,8 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pq pq.Queue) 
 		return nil, errors.E(op, err)
 	}
 
+	jb.pipeline.Store(&pipeline)
+
 	jb.conn.NotifyClose(jb.notifyCloseConnCh)
 	pch.NotifyClose(jb.notifyClosePubCh)
 	stch.NotifyClose(jb.notifyCloseStatCh)
@@ -186,7 +188,7 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pq pq.Queue) 
 }
 
 // FromPipeline initializes consumer from pipeline
-func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq.Queue) (*Consumer, error) {
+func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq.Queue, _ chan<- jobs.Commander) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
@@ -212,7 +214,7 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 		log.Error("prefetch parse, driver will use default (10) prefetch", zap.String("prefetch", pipeline.String(prefetch, "10")))
 	}
 
-	jb := &Consumer{
+	jb := &Driver{
 		log:       log,
 		pq:        pq,
 		consumeID: uuid.NewString(),
@@ -295,8 +297,7 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 	jb.stateChan <- stch
 
 	// register the pipeline
-	// error here is always nil
-	_ = jb.Register(context.Background(), pipeline)
+	jb.pipeline.Store(&pipeline)
 
 	// run redialer for the connection
 	jb.redialer()
@@ -305,7 +306,7 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 	return jb, nil
 }
 
-func (c *Consumer) Push(ctx context.Context, job jobs.Job) error {
+func (c *Driver) Push(ctx context.Context, job jobs.Job) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
@@ -323,12 +324,7 @@ func (c *Consumer) Push(ctx context.Context, job jobs.Job) error {
 	return nil
 }
 
-func (c *Consumer) Register(_ context.Context, p jobs.Pipeline) error {
-	c.pipeline.Store(&p)
-	return nil
-}
-
-func (c *Consumer) Run(_ context.Context, p jobs.Pipeline) error {
+func (c *Driver) Run(_ context.Context, p jobs.Pipeline) error {
 	start := time.Now()
 	const op = errors.Op("rabbit_run")
 
@@ -381,7 +377,7 @@ func (c *Consumer) Run(_ context.Context, p jobs.Pipeline) error {
 	return nil
 }
 
-func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
+func (c *Driver) State(ctx context.Context) (*jobs.State, error) {
 	const op = errors.Op("amqp_driver_state")
 	select {
 	case stateCh := <-c.stateChan:
@@ -411,18 +407,17 @@ func (c *Consumer) State(ctx context.Context) (*jobs.State, error) {
 	}
 }
 
-func (c *Consumer) Pause(_ context.Context, p string) {
+func (c *Driver) Pause(_ context.Context, p string) error {
 	start := time.Now()
 	pipe := *c.pipeline.Load()
 	if pipe.Name() != p {
-		c.log.Error("no such pipeline", zap.String("requested", p))
+		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
 
 	l := atomic.LoadUint32(&c.listeners)
 	// no active listeners
 	if l == 0 {
-		c.log.Warn("no active listeners, nothing to pause")
-		return
+		return errors.Str("no active listeners, nothing to pause")
 	}
 
 	atomic.AddUint32(&c.listeners, ^uint32(0))
@@ -436,20 +431,21 @@ func (c *Consumer) Pause(_ context.Context, p string) {
 		c.log.Error("cancel publish channel, forcing close", zap.Error(err))
 		errCl := c.consumeChan.Close()
 		if errCl != nil {
-			c.log.Error("force close was failed", zap.Error(err))
-			return
+			return errCl
 		}
-		return
+		return err
 	}
 
 	c.log.Debug("pipeline was paused", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+
+	return nil
 }
 
-func (c *Consumer) Resume(_ context.Context, p string) {
+func (c *Driver) Resume(_ context.Context, p string) error {
 	start := time.Now()
 	pipe := *c.pipeline.Load()
 	if pipe.Name() != p {
-		c.log.Error("no such pipeline", zap.String("requested", p))
+		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
 
 	// protect connection (redial)
@@ -459,27 +455,23 @@ func (c *Consumer) Resume(_ context.Context, p string) {
 	l := atomic.LoadUint32(&c.listeners)
 	// no active listeners
 	if l == 1 {
-		c.log.Warn("amqp listener is already in the active state")
-		return
+		return errors.Str("amqp listener is already in the active state")
 	}
 
 	var err error
 	err = c.declareQueue()
 	if err != nil {
-		c.log.Error("unable to start listener", zap.Error(err))
-		return
+		return err
 	}
 
 	c.consumeChan, err = c.conn.Channel()
 	if err != nil {
-		c.log.Error("create channel", zap.Error(err))
-		return
+		return err
 	}
 
 	err = c.consumeChan.Qos(c.prefetch, 0, false)
 	if err != nil {
-		c.log.Error("QOS", zap.Error(err))
-		return
+		return err
 	}
 
 	// start reading messages from the channel
@@ -493,8 +485,7 @@ func (c *Consumer) Resume(_ context.Context, p string) {
 		nil,
 	)
 	if err != nil {
-		c.log.Error("consume operation was failed", zap.Error(err))
-		return
+		return err
 	}
 
 	// run listener
@@ -503,9 +494,11 @@ func (c *Consumer) Resume(_ context.Context, p string) {
 	// increase number of listeners
 	atomic.AddUint32(&c.listeners, 1)
 	c.log.Debug("pipeline was resumed", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+
+	return nil
 }
 
-func (c *Consumer) Stop(context.Context) error {
+func (c *Driver) Stop(context.Context) error {
 	start := time.Now()
 	atomic.StoreUint32(&c.stopped, 1)
 	c.stopCh <- struct{}{}
@@ -516,7 +509,7 @@ func (c *Consumer) Stop(context.Context) error {
 	return nil
 }
 
-func (c *Consumer) Status() (*status.Status, error) {
+func (c *Driver) Status() (*status.Status, error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -543,7 +536,7 @@ func (c *Consumer) Status() (*status.Status, error) {
 }
 
 // handleItem
-func (c *Consumer) handleItem(ctx context.Context, msg *Item) error {
+func (c *Driver) handleItem(ctx context.Context, msg *Item) error {
 	const op = errors.Op("rabbitmq_handle_item")
 	select {
 	case pch := <-c.publishChan:
