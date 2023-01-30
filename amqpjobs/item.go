@@ -97,9 +97,16 @@ func (i *Item) Context() ([]byte, error) {
 		struct {
 			ID       string              `json:"id"`
 			Job      string              `json:"job"`
+			Driver   string              `json:"driver"`
 			Headers  map[string][]string `json:"headers"`
 			Pipeline string              `json:"pipeline"`
-		}{ID: i.Ident, Job: i.Job, Headers: i.Headers, Pipeline: i.Options.Pipeline},
+		}{
+			ID:       i.Ident,
+			Job:      i.Job,
+			Driver:   pluginName,
+			Headers:  i.Headers,
+			Pipeline: i.Options.Pipeline,
+		},
 	)
 
 	if err != nil {
