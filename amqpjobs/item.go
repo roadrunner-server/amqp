@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"sync/atomic"
 	"time"
+	"unsafe"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v4/utils"
 	"go.uber.org/zap"
 )
 
@@ -87,7 +87,7 @@ func (i *Item) Priority() int64 {
 
 // Body packs job payload into binary payload.
 func (i *Item) Body() []byte {
-	return utils.AsBytes(i.Payload)
+	return strToBytes(i.Payload)
 }
 
 // Context packs job context (job, id) into binary payload.
@@ -182,7 +182,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 			return &Item{
 				Job:     auto,
 				Ident:   id,
-				Payload: utils.AsString(deliv.Body),
+				Payload: bytesToStr(deliv.Body),
 				Headers: convHeaders(deliv.Headers),
 				Options: &Options{
 					Priority: 10,
@@ -269,7 +269,7 @@ func pack(id string, j *Item) (amqp.Table, error) {
 // unpack restores jobs.Options
 func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 	item := &Item{
-		Payload: utils.AsString(deliv.Body),
+		Payload: bytesToStr(deliv.Body),
 		Options: &Options{
 			multipleAsk: d.multipleAck,
 			requeue:     d.requeueOnFail,
@@ -333,4 +333,20 @@ func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 func isJSONEncoded(data []byte) error {
 	var a any
 	return json.Unmarshal(data, &a)
+}
+
+func bytesToStr(data []byte) string {
+	if len(data) == 0 {
+		return ""
+	}
+
+	return unsafe.String(unsafe.SliceData(data), len(data))
+}
+
+func strToBytes(data string) []byte {
+	if data == "" {
+		return nil
+	}
+
+	return unsafe.Slice(unsafe.StringData(data), len(data))
 }

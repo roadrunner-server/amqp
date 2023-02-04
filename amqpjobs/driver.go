@@ -15,7 +15,6 @@ import (
 	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
 	"github.com/roadrunner-server/api/v4/plugins/v1/status"
 	"github.com/roadrunner-server/errors"
-	"github.com/roadrunner-server/sdk/v4/utils"
 	"go.uber.org/zap"
 )
 
@@ -118,7 +117,7 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs
 		consumeAll: conf.ConsumeAll,
 
 		priority: conf.Priority,
-		delayed:  utils.Int64(0),
+		delayed:  ptrTo(int64(0)),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -219,7 +218,7 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 		pq:        pq,
 		consumeID: uuid.NewString(),
 		stopCh:    make(chan struct{}, 1),
-		delayed:   utils.Int64(0),
+		delayed:   ptrTo(int64(0)),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -612,4 +611,8 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 
 func ready(r uint32) bool {
 	return r > 0
+}
+
+func ptrTo[T any](val T) *T {
+	return &val
 }
