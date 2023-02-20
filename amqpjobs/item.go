@@ -143,7 +143,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 	if err != nil {
 		errNack := i.Options.nack(false, true)
 		if errNack != nil {
-			return fmt.Errorf("requeue error: %w\nack error: %v", err, errNack)
+			return fmt.Errorf("requeue error: %w\nack error: %w", err, errNack)
 		}
 
 		return err

@@ -384,7 +384,16 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 			d.stateChan <- stateCh
 		}()
 
-		q, err := stateCh.QueueInspect(d.queue)
+		// verify or declare a queue
+		q, err := stateCh.QueueDeclarePassive(
+			d.queue,
+			d.durable,
+			d.queueAutoDelete,
+			d.exclusive,
+			false,
+			d.queueHeaders,
+		)
+
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
@@ -521,7 +530,15 @@ func (d *Driver) Status() (*status.Status, error) {
 		_ = ch.Close()
 	}()
 
-	_, err = ch.QueueInspect(d.queue)
+	// verify or declare a queue
+	_, err = ch.QueueDeclarePassive(
+		d.queue,
+		d.durable,
+		d.queueAutoDelete,
+		d.exclusive,
+		false,
+		d.queueHeaders,
+	)
 	if err != nil {
 		d.log.Error("queue inspect", zap.Error(err))
 		return &status.Status{
