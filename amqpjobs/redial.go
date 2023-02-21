@@ -233,18 +233,6 @@ func (d *Driver) redial(rm *redialMsg) {
 			return errors.E(op, err)
 		}
 
-		// redeclare consume channel
-		d.consumeChan, err = d.conn.Channel()
-		if err != nil {
-			return errors.E(op, err)
-		}
-
-		err = d.consumeChan.Qos(d.prefetch, 0, false)
-		if err != nil {
-			d.log.Error("QOS", zap.Error(err))
-			return errors.E(op, err)
-		}
-
 		// redeclare publish channel
 		pch, err := d.conn.Channel()
 		if err != nil {
@@ -252,20 +240,6 @@ func (d *Driver) redial(rm *redialMsg) {
 		}
 
 		sch, err := d.conn.Channel()
-		if err != nil {
-			return errors.E(op, err)
-		}
-
-		// start reading messages from the channel
-		deliv, err := d.consumeChan.Consume(
-			d.queue,
-			d.consumeID,
-			false,
-			false,
-			false,
-			false,
-			nil,
-		)
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -285,6 +259,31 @@ func (d *Driver) redial(rm *redialMsg) {
 		// we should restore the listener only when we previously had an active listener
 		// OR if we get a Consume Closed type of the error
 		if atomic.LoadUint32(&d.listeners) == 1 || rm.t == ConsumeCloseType {
+			// redeclare consume channel
+			d.consumeChan, err = d.conn.Channel()
+			if err != nil {
+				return errors.E(op, err)
+			}
+
+			err = d.consumeChan.Qos(d.prefetch, 0, false)
+			if err != nil {
+				d.log.Error("QOS", zap.Error(err))
+				return errors.E(op, err)
+			}
+
+			// start reading messages from the channel
+			deliv, err := d.consumeChan.Consume(
+				d.queue,
+				d.consumeID,
+				false,
+				false,
+				false,
+				false,
+				nil,
+			)
+			if err != nil {
+				return errors.E(op, err)
+			}
 			d.notifyCloseConsumeCh = make(chan *amqp.Error, 1)
 			d.consumeChan.NotifyClose(d.notifyCloseConsumeCh)
 			// restart listener
@@ -295,6 +294,7 @@ func (d *Driver) redial(rm *redialMsg) {
 
 			atomic.StoreUint32(&d.listeners, 1)
 			d.listener(deliv)
+			d.log.Info("consumer restored successfully")
 		}
 
 		d.log.Info("queues and subscribers was redeclared successfully")
