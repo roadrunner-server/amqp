@@ -230,7 +230,7 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 
 		consumeAll:        pipeline.Bool(consumeAll, false),
 		routingKey:        pipeline.String(routingKey, ""),
-		queue:             pipeline.String(queue, "default"),
+		queue:             pipeline.String(queue, ""),
 		exchangeType:      pipeline.String(exchangeType, "direct"),
 		exchangeName:      pipeline.String(exchangeKey, "amqp.default"),
 		prefetch:          prf,
@@ -311,6 +311,10 @@ func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
+	if d.routingKey == "" {
+		return errors.Str("empty routing key, consider adding the routing key name to the AMQP configuration")
+	}
+
 	// load atomic value
 	pipe := *d.pipeline.Load()
 	if pipe.Name() != job.Pipeline() {
@@ -332,6 +336,10 @@ func (d *Driver) Run(_ context.Context, p jobs.Pipeline) error {
 	pipe := *d.pipeline.Load()
 	if pipe.Name() != p.Name() {
 		return errors.E(op, errors.Errorf("no such pipeline registered: %s", pipe.Name()))
+	}
+
+	if d.queue == "" {
+		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
 	// protect connection (redial)
@@ -386,6 +394,10 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 			d.stateChan <- stateCh
 		}()
 
+		if d.queue == "" {
+			return nil, errors.Str("empty queue name, add queue to the AMQP configuration")
+		}
+
 		// verify or declare a queue
 		q, err := stateCh.QueueDeclarePassive(
 			d.queue,
@@ -424,6 +436,10 @@ func (d *Driver) Pause(_ context.Context, p string) error {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
 
+	if d.queue == "" {
+		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
+	}
+
 	l := atomic.LoadUint32(&d.listeners)
 	// no active listeners
 	if l == 0 {
@@ -456,6 +472,10 @@ func (d *Driver) Resume(_ context.Context, p string) error {
 	pipe := *d.pipeline.Load()
 	if pipe.Name() != p {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
+	}
+
+	if d.queue == "" {
+		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
 	// protect connection (redial)
@@ -520,6 +540,10 @@ func (d *Driver) Stop(context.Context) error {
 }
 
 func (d *Driver) Status() (*status.Status, error) {
+	if d.queue == "" {
+		return nil, errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
+	}
+
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
