@@ -83,10 +83,6 @@ func (c *config) InitDefault() {
 		c.Exchange = "amqp.default"
 	}
 
-	if c.Queue == "" {
-		c.Queue = "default"
-	}
-
 	if c.RedialTimeout == 0 {
 		c.RedialTimeout = 60
 	}
@@ -101,11 +97,6 @@ func (c *config) InitDefault() {
 
 	if c.Addr == "" {
 		c.Addr = "amqp://guest:guest@127.0.0.1:5672/"
-	}
-
-	// if user doesn't specify a routing key, use queue name as routing key
-	if c.RoutingKey == "" {
-		c.RoutingKey = c.Queue
 	}
 
 	if c.ConsumerID == "" {
