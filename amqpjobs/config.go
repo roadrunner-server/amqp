@@ -1,5 +1,11 @@
 package amqpjobs
 
+import (
+	"fmt"
+
+	"github.com/google/uuid"
+)
+
 // pipeline rabbitmq info
 const (
 	exchangeKey   string = "exchange"
@@ -28,6 +34,9 @@ const (
 
 	// new in 2.12.2
 	queueHeaders string = "queue_headers"
+
+	// new in 2023.1.0
+	consumerIDKey string = "consumer_id"
 
 	contentType string = "application/octet-stream"
 )
@@ -60,6 +69,8 @@ type config struct {
 
 	// new in 2.12.2
 	QueueHeaders map[string]any `mapstructure:"queue_headers"`
+	// new in 2023.1.0
+	ConsumerID string `mapstructure:"consumer_id"`
 }
 
 func (c *config) InitDefault() {
@@ -95,5 +106,9 @@ func (c *config) InitDefault() {
 	// if user doesn't specify a routing key, use queue name as routing key
 	if c.RoutingKey == "" {
 		c.RoutingKey = c.Queue
+	}
+
+	if c.ConsumerID == "" {
+		c.ConsumerID = fmt.Sprintf("roadrunner-%s", uuid.NewString())
 	}
 }

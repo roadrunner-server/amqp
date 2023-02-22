@@ -112,7 +112,6 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs
 	jb := &Driver{
 		log:        log,
 		pq:         pq,
-		consumeID:  uuid.NewString(),
 		stopCh:     make(chan struct{}, 1),
 		consumeAll: conf.ConsumeAll,
 
@@ -128,6 +127,7 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs
 		notifyCloseStatCh:    make(chan *amqp.Error, 1),
 		notifyClosePubCh:     make(chan *amqp.Error, 1),
 
+		consumeID:         conf.ConsumerID,
 		routingKey:        conf.RoutingKey,
 		queue:             conf.Queue,
 		durable:           conf.Durable,
@@ -214,11 +214,10 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 	}
 
 	jb := &Driver{
-		log:       log,
-		pq:        pq,
-		consumeID: uuid.NewString(),
-		stopCh:    make(chan struct{}, 1),
-		delayed:   ptrTo(int64(0)),
+		log:     log,
+		pq:      pq,
+		stopCh:  make(chan struct{}, 1),
+		delayed: ptrTo(int64(0)),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -250,6 +249,9 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 
 		// 2.12.2
 		queueHeaders: nil,
+
+		// new in 2023.1.0
+		consumeID: pipeline.String(consumerIDKey, fmt.Sprintf("roadrunner-%s", uuid.NewString())),
 	}
 
 	v := pipeline.String(queueHeaders, "")
