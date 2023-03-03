@@ -13,7 +13,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
 	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
-	"github.com/roadrunner-server/api/v4/plugins/v1/status"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
@@ -537,44 +536,6 @@ func (d *Driver) Stop(context.Context) error {
 	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 	close(d.redialCh)
 	return nil
-}
-
-func (d *Driver) Status() (*status.Status, error) {
-	if d.queue == "" {
-		return nil, errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
-	}
-
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	ch, err := d.conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		_ = ch.Close()
-	}()
-
-	// verify or declare a queue
-	_, err = ch.QueueDeclarePassive(
-		d.queue,
-		d.durable,
-		d.queueAutoDelete,
-		d.exclusive,
-		false,
-		d.queueHeaders,
-	)
-	if err != nil {
-		d.log.Error("queue inspect", zap.Error(err))
-		return &status.Status{
-			Code: 500,
-		}, nil
-	}
-
-	return &status.Status{
-		Code: 200,
-	}, nil
 }
 
 // handleItem
