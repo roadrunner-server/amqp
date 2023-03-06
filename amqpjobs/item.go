@@ -2,7 +2,7 @@ package amqpjobs
 
 import (
 	"context"
-	"fmt"
+	stderr "errors"
 	"sync/atomic"
 	"time"
 	"unsafe"
@@ -24,16 +24,12 @@ const (
 type Item struct {
 	// Job contains pluginName of job broker (usually PHP class).
 	Job string `json:"job"`
-
 	// Ident is unique identifier of the job, should be provided from outside
 	Ident string `json:"id"`
-
 	// Payload is string data (usually JSON) passed to Job broker.
 	Payload string `json:"payload"`
-
 	// Headers with key-values pairs
 	Headers map[string][]string `json:"headers"`
-
 	// Options contains set of PipelineOptions specific to job execution. Can be empty.
 	Options *Options `json:"options,omitempty"`
 }
@@ -43,13 +39,10 @@ type Options struct {
 	// Priority is job priority, default - 10
 	// pointer to distinguish 0 as a priority and nil as priority not set
 	Priority int64 `json:"priority"`
-
 	// Pipeline manually specified pipeline.
 	Pipeline string `json:"pipeline,omitempty"`
-
 	// Delay defines time duration to delay execution for. Defaults to none.
 	Delay int64 `json:"delay,omitempty"`
-
 	// AutoAck option
 	AutoAck bool `json:"auto_ack"`
 
@@ -147,7 +140,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 	if err != nil {
 		errNack := i.Options.nack(false, true)
 		if errNack != nil {
-			return fmt.Errorf("requeue error: %w\nack error: %w", err, errNack)
+			return stderr.Join(err, errNack)
 		}
 
 		return err

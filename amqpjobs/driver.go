@@ -36,6 +36,7 @@ type Configurer interface {
 	// Has checks if config section exists.
 	Has(name string) bool
 }
+
 type Driver struct {
 	mu         sync.Mutex
 	log        *zap.Logger
