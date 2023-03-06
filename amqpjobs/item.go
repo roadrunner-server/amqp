@@ -90,6 +90,10 @@ func (i *Item) Body() []byte {
 	return strToBytes(i.Payload)
 }
 
+func (i *Item) Metadata() map[string][]string {
+	return i.Headers
+}
+
 // Context packs job context (job, id) into binary payload.
 // Not used in the amqp, amqp.Table used instead
 func (i *Item) Context() ([]byte, error) {
@@ -188,12 +192,12 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 					Priority: 10,
 					Delay:    0,
 					// in case of `deduced_by_rr` type of the JOB, we're sending a queue name
-					Pipeline:    d.queue,
+					Pipeline:    (*d.pipeline.Load()).Name(),
+					AutoAck:     false,
 					ack:         deliv.Ack,
 					nack:        deliv.Nack,
 					requeueFn:   d.handleItem,
 					delayed:     d.delayed,
-					AutoAck:     false,
 					multipleAsk: false,
 					requeue:     false,
 				},

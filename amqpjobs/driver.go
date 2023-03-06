@@ -2,6 +2,7 @@ package amqpjobs
 
 import (
 	"context"
+	stderr "errors"
 	"fmt"
 	"strconv"
 	"sync"
@@ -13,13 +14,18 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
 	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
-	"github.com/roadrunner-server/api/v4/plugins/v1/status"
 	"github.com/roadrunner-server/errors"
+	jprop "go.opentelemetry.io/contrib/propagators/jaeger"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
 )
 
 const (
 	pluginName string = "amqp"
+	tracerName string = "jobs"
 )
 
 var _ jobs.Driver = (*Driver)(nil)
@@ -36,6 +42,8 @@ type Driver struct {
 	pq         pq.Queue
 	pipeline   atomic.Pointer[jobs.Pipeline]
 	consumeAll bool
+	tracer     *sdktrace.TracerProvider
+	prop       propagation.TextMapPropagator
 
 	// amqp connection notifiers
 	notifyCloseConnCh    chan *amqp.Error
@@ -79,8 +87,15 @@ type Driver struct {
 }
 
 // FromConfig initializes rabbitmq pipeline
-func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq pq.Queue, _ chan<- jobs.Commander) (*Driver, error) {
+func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq pq.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer")
+
+	if tracer == nil {
+		tracer = sdktrace.NewTracerProvider()
+	}
+
+	prop := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}, jprop.Jaeger{})
+	otel.SetTextMapPropagator(prop)
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
 	// second part - queues and other pipeline information
@@ -110,6 +125,8 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs
 	// PARSE CONFIGURATION END -------
 
 	jb := &Driver{
+		tracer:     tracer,
+		prop:       prop,
 		log:        log,
 		pq:         pq,
 		stopCh:     make(chan struct{}, 1),
@@ -187,8 +204,14 @@ func FromConfig(configKey string, log *zap.Logger, cfg Configurer, pipeline jobs
 }
 
 // FromPipeline initializes consumer from pipeline
-func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq.Queue, _ chan<- jobs.Commander) (*Driver, error) {
+func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
+	if tracer == nil {
+		tracer = sdktrace.NewTracerProvider()
+	}
+
+	prop := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}, jprop.Jaeger{})
+	otel.SetTextMapPropagator(prop)
 	// we need to obtain two parts of the amqp information here.
 	// firs part - address to connect, it is located in the global section under the amqp pluginName
 	// second part - queues and other pipeline information
@@ -214,6 +237,8 @@ func FromPipeline(pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq
 	}
 
 	jb := &Driver{
+		prop:    prop,
+		tracer:  tracer,
 		log:     log,
 		pq:      pq,
 		stopCh:  make(chan struct{}, 1),
@@ -311,6 +336,9 @@ func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
+	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_push")
+	defer span.End()
+
 	if d.routingKey == "" {
 		return errors.Str("empty routing key, consider adding the routing key name to the AMQP configuration")
 	}
@@ -329,9 +357,12 @@ func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
 	return nil
 }
 
-func (d *Driver) Run(_ context.Context, p jobs.Pipeline) error {
-	start := time.Now()
+func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
+	start := time.Now().UTC()
 	const op = errors.Op("rabbit_run")
+
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_run")
+	defer span.End()
 
 	pipe := *d.pipeline.Load()
 	if pipe.Name() != p.Name() {
@@ -388,6 +419,9 @@ func (d *Driver) Run(_ context.Context, p jobs.Pipeline) error {
 
 func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 	const op = errors.Op("amqp_driver_state")
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_state")
+	defer span.End()
+
 	select {
 	case stateCh := <-d.stateChan:
 		defer func() {
@@ -429,9 +463,13 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 	}
 }
 
-func (d *Driver) Pause(_ context.Context, p string) error {
-	start := time.Now()
+func (d *Driver) Pause(ctx context.Context, p string) error {
+	start := time.Now().UTC()
 	pipe := *d.pipeline.Load()
+
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_resume")
+	defer span.End()
+
 	if pipe.Name() != p {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
@@ -457,7 +495,7 @@ func (d *Driver) Pause(_ context.Context, p string) error {
 		d.log.Error("cancel publish channel, forcing close", zap.Error(err))
 		errCl := d.consumeChan.Close()
 		if errCl != nil {
-			return errCl
+			return stderr.Join(errCl, err)
 		}
 		return err
 	}
@@ -467,8 +505,12 @@ func (d *Driver) Pause(_ context.Context, p string) error {
 	return nil
 }
 
-func (d *Driver) Resume(_ context.Context, p string) error {
-	start := time.Now()
+func (d *Driver) Resume(ctx context.Context, p string) error {
+	start := time.Now().UTC()
+
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_resume")
+	defer span.End()
+
 	pipe := *d.pipeline.Load()
 	if pipe.Name() != p {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
@@ -528,8 +570,12 @@ func (d *Driver) Resume(_ context.Context, p string) error {
 	return nil
 }
 
-func (d *Driver) Stop(context.Context) error {
-	start := time.Now()
+func (d *Driver) Stop(ctx context.Context) error {
+	start := time.Now().UTC()
+
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_stop")
+	defer span.End()
+
 	atomic.StoreUint32(&d.stopped, 1)
 	d.stopCh <- struct{}{}
 
@@ -537,44 +583,6 @@ func (d *Driver) Stop(context.Context) error {
 	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
 	close(d.redialCh)
 	return nil
-}
-
-func (d *Driver) Status() (*status.Status, error) {
-	if d.queue == "" {
-		return nil, errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
-	}
-
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	ch, err := d.conn.Channel()
-	if err != nil {
-		return nil, err
-	}
-
-	defer func() {
-		_ = ch.Close()
-	}()
-
-	// verify or declare a queue
-	_, err = ch.QueueDeclarePassive(
-		d.queue,
-		d.durable,
-		d.queueAutoDelete,
-		d.exclusive,
-		false,
-		d.queueHeaders,
-	)
-	if err != nil {
-		d.log.Error("queue inspect", zap.Error(err))
-		return &status.Status{
-			Code: 500,
-		}, nil
-	}
-
-	return &status.Status{
-		Code: 200,
-	}, nil
 }
 
 // handleItem
@@ -586,6 +594,8 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 		defer func() {
 			d.publishChan <- pch
 		}()
+
+		d.prop.Inject(ctx, propagation.HeaderCarrier(msg.Headers))
 
 		// convert
 		table, err := pack(msg.ID(), msg)
@@ -621,7 +631,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			err = pch.PublishWithContext(ctx, d.exchangeName, tmpQ, false, false, amqp.Publishing{
 				Headers:      table,
 				ContentType:  contentType,
-				Timestamp:    time.Now(),
+				Timestamp:    time.Now().UTC(),
 				DeliveryMode: amqp.Persistent,
 				Body:         msg.Body(),
 			})
@@ -637,7 +647,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 		err = pch.PublishWithContext(ctx, d.exchangeName, d.routingKey, false, false, amqp.Publishing{
 			Headers:      table,
 			ContentType:  contentType,
-			Timestamp:    time.Now(),
+			Timestamp:    time.Now().UTC(),
 			DeliveryMode: amqp.Persistent,
 			Body:         msg.Body(),
 		})
