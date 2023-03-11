@@ -1,9 +1,13 @@
 package amqpjobs
 
 import (
+	"context"
 	"sync/atomic"
 
 	amqp "github.com/rabbitmq/amqp091-go"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
 	"go.uber.org/zap"
 )
 
@@ -11,7 +15,16 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 	go func() {
 		for msg := range deliv {
 			del, err := d.fromDelivery(msg)
+
+			ctx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(del.Headers))
+			ctx, span := d.tracer.Tracer(tracerName).Start(ctx, "amqp_listener")
+
 			if err != nil {
+				span.SetAttributes(attribute.KeyValue{
+					Key:   "error",
+					Value: attribute.StringValue(err.Error()),
+				})
+
 				d.log.Error("delivery convert", zap.Error(err))
 				/*
 					Acknowledge failed job to prevent endless loo;
@@ -33,8 +46,10 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 				_ = msg.Ack(false)
 			}
 
+			d.prop.Inject(ctx, propagation.HeaderCarrier(del.Headers))
 			// insert job into the main priority queue
 			d.pq.Insert(del)
+			span.End()
 		}
 
 		d.log.Debug("delivery channel was closed, leaving the rabbit listener")
