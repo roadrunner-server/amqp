@@ -45,6 +45,8 @@ type Options struct {
 	Delay int64 `json:"delay,omitempty"`
 	// AutoAck option
 	AutoAck bool `json:"auto_ack"`
+	// AMQP Queue
+	Queue string `json:"queue,omitempty"`
 
 	// private
 	// ack delegates an acknowledgement through the Acknowledger interface that the client or server has finished work on a delivery
@@ -95,6 +97,7 @@ func (i *Item) Context() ([]byte, error) {
 			ID       string              `json:"id"`
 			Job      string              `json:"job"`
 			Driver   string              `json:"driver"`
+			Queue    string              `json:"queue"`
 			Headers  map[string][]string `json:"headers"`
 			Pipeline string              `json:"pipeline"`
 		}{
@@ -102,6 +105,7 @@ func (i *Item) Context() ([]byte, error) {
 			Job:      i.Job,
 			Driver:   pluginName,
 			Headers:  i.Headers,
+			Queue:    i.Options.Queue,
 			Pipeline: i.Options.Pipeline,
 		},
 	)
@@ -183,7 +187,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 				Headers: convHeaders(deliv.Headers),
 				Options: &Options{
 					Priority: 10,
-					Delay:    0,
+					Queue:    d.queue,
 					// in case of `deduced_by_rr` type of the JOB, we're sending a queue name
 					Pipeline:    (*d.pipeline.Load()).Name(),
 					AutoAck:     false,
