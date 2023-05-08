@@ -46,6 +46,10 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 				_ = msg.Ack(false)
 			}
 
+			if del.Headers == nil {
+				del.Headers = make(map[string][]string, 2)
+			}
+
 			d.prop.Inject(ctx, propagation.HeaderCarrier(del.Headers))
 			// insert job into the main priority queue
 			d.pq.Insert(del)
