@@ -2,6 +2,7 @@ package amqpjobs
 
 import (
 	"context"
+	"crypto/tls"
 	stderr "errors"
 	"fmt"
 	"strconv"
@@ -122,7 +123,10 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		return nil, errors.E(op, err)
 	}
 
-	conf.InitDefault()
+	err = conf.InitDefault()
+	if err != nil {
+		return nil, err
+	}
 	// PARSE CONFIGURATION END -------
 
 	jb := &Driver{
@@ -166,7 +170,7 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		queueHeaders: conf.QueueHeaders,
 	}
 
-	jb.conn, err = amqp.Dial(conf.Addr)
+	jb.conn, err = dial(conf.Addr, conf.TLS)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -661,6 +665,24 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 	case <-ctx.Done():
 		return errors.E(op, errors.TimeOut, ctx.Err())
 	}
+}
+
+func dial(addr string, amqps *tls.Config) (*amqp.Connection, error) {
+	// use non-tls connection
+	if amqps == nil {
+		conn, err := amqp.Dial(addr)
+		if err != nil {
+			return nil, err
+		}
+		return conn, nil
+	}
+
+	conn, err := amqp.DialTLS(addr, amqps)
+	if err != nil {
+		return nil, err
+	}
+
+	return conn, nil
 }
 
 func ready(r uint32) bool {
