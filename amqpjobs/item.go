@@ -275,6 +275,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 			multipleAsk: d.multipleAck,
 			requeue:     d.requeueOnFail,
 			requeueFn:   d.handleItem,
+			Queue:       d.queue,
 		},
 	}
 
