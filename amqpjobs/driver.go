@@ -170,7 +170,7 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		queueHeaders: conf.QueueHeaders,
 	}
 
-	jb.conn, err = dial(conf.Addr, conf.TLS)
+	jb.conn, err = dial(conf.Addr, &conf)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -232,7 +232,10 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
-	conf.InitDefault()
+	err = conf.InitDefault()
+	if err != nil {
+		return nil, err
+	}
 	// PARSE CONFIGURATION -------
 
 	// parse prefetch
@@ -296,7 +299,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		jb.queueHeaders = tp
 	}
 
-	jb.conn, err = amqp.Dial(conf.Addr)
+	jb.conn, err = dial(conf.Addr, &conf)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -667,9 +670,9 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 	}
 }
 
-func dial(addr string, amqps *tls.Config) (*amqp.Connection, error) {
+func dial(addr string, amqps *config) (*amqp.Connection, error) {
 	// use non-tls connection
-	if amqps == nil {
+	if amqps.TLS == nil {
 		conn, err := amqp.Dial(addr)
 		if err != nil {
 			return nil, err
@@ -677,7 +680,15 @@ func dial(addr string, amqps *tls.Config) (*amqp.Connection, error) {
 		return conn, nil
 	}
 
-	conn, err := amqp.DialTLS(addr, amqps)
+	tlsCfg := &tls.Config{
+		MinVersion: tls.VersionTLS12,
+	}
+	err := initTLS(amqps.TLS, tlsCfg)
+	if err != nil {
+		return nil, err
+	}
+
+	conn, err := amqp.DialTLS(addr, tlsCfg)
 	if err != nil {
 		return nil, err
 	}
