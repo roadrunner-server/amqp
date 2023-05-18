@@ -340,7 +340,7 @@ func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
 	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_push")
 	defer span.End()
 
-	if d.routingKey == "" {
+	if d.routingKey == "" && d.exchangeType != "fanout" {
 		return errors.Str("empty routing key, consider adding the routing key name to the AMQP configuration")
 	}
 
