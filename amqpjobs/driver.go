@@ -271,7 +271,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		durable:           pipeline.Bool(durable, false),
 		deleteQueueOnStop: pipeline.Bool(deleteOnStop, false),
 		exclusive:         pipeline.Bool(exclusive, false),
-		multipleAck:       pipeline.Bool(multipleAsk, false),
+		multipleAck:       pipeline.Bool(multipleAck, false),
 		requeueOnFail:     pipeline.Bool(requeueOnFail, false),
 
 		// new in 2.12
