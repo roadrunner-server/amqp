@@ -32,7 +32,7 @@ const (
 	durable       string = "durable"
 	deleteOnStop  string = "delete_queue_on_stop"
 	priority      string = "priority"
-	multipleAsk   string = "multiple_ask"
+	multipleAck   string = "multiple_ack"
 	requeueOnFail string = "requeue_on_fail"
 
 	// new in 2.12
@@ -75,7 +75,7 @@ type config struct {
 	Exclusive         bool   `mapstructure:"exclusive"`
 	Durable           bool   `mapstructure:"durable"`
 	DeleteQueueOnStop bool   `mapstructure:"delete_queue_on_stop"`
-	MultipleAck       bool   `mapstructure:"multiple_ask"`
+	MultipleAck       bool   `mapstructure:"multiple_ack"`
 	RequeueOnFail     bool   `mapstructure:"requeue_on_fail"`
 
 	// new in 2.12.1

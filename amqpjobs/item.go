@@ -63,7 +63,7 @@ type Options struct {
 
 	// delayed jobs TODO(rustatian): figure out how to get stats from the DLX
 	delayed     *int64
-	multipleAsk bool
+	multipleAck bool
 	requeue     bool
 }
 
@@ -121,7 +121,7 @@ func (i *Item) Ack() error {
 	if i.Options.Delay > 0 {
 		atomic.AddInt64(i.Options.delayed, ^int64(0))
 	}
-	return i.Options.ack(i.Options.multipleAsk)
+	return i.Options.ack(i.Options.multipleAck)
 }
 
 func (i *Item) Nack() error {
@@ -195,7 +195,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 					nack:        deliv.Nack,
 					requeueFn:   d.handleItem,
 					delayed:     d.delayed,
-					multipleAsk: false,
+					multipleAck: false,
 					requeue:     false,
 				},
 			}, nil
@@ -272,7 +272,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 	item := &Item{
 		Payload: bytesToStr(deliv.Body),
 		Options: &Options{
-			multipleAsk: d.multipleAck,
+			multipleAck: d.multipleAck,
 			requeue:     d.requeueOnFail,
 			requeueFn:   d.handleItem,
 			Queue:       d.queue,
