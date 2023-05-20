@@ -1,9 +1,23 @@
 package amqpjobs
 
 import (
+	"crypto/tls"
 	"fmt"
+	"os"
 
 	"github.com/google/uuid"
+	"github.com/roadrunner-server/errors"
+)
+
+// TSL auth type
+type ClientAuthType string
+
+const (
+	NoClientCert               ClientAuthType = "no_client_cert"
+	RequestClientCert          ClientAuthType = "request_client_cert"
+	RequireAnyClientCert       ClientAuthType = "require_any_client_cert"
+	VerifyClientCertIfGiven    ClientAuthType = "verify_client_cert_if_given"
+	RequireAndVerifyClientCert ClientAuthType = "require_and_verify_client_cert"
 )
 
 // pipeline rabbitmq info
@@ -45,6 +59,9 @@ const (
 type config struct {
 	// global
 	Addr string `mapstructure:"addr"`
+	// global TLS option
+
+	TLS *TLS `mapstructure:"tls"`
 
 	// local
 	Prefetch     int    `mapstructure:"prefetch"`
@@ -73,7 +90,18 @@ type config struct {
 	ConsumerID string `mapstructure:"consumer_id"`
 }
 
-func (c *config) InitDefault() {
+// TLS
+type TLS struct {
+	RootCA   string         `mapstructure:"root_ca"`
+	Key      string         `mapstructure:"key"`
+	Cert     string         `mapstructure:"cert"`
+	AuthType ClientAuthType `mapstructure:"client_auth_type"`
+	// auth type
+	auth tls.ClientAuthType
+}
+
+func (c *config) InitDefault() error {
+	const op = errors.Op("amqp_init_default")
 	// all options should be in sync with the pipeline defaults in the ConsumerFromPipeline method
 	if c.ExchangeType == "" {
 		c.ExchangeType = "direct"
@@ -102,4 +130,57 @@ func (c *config) InitDefault() {
 	if c.ConsumerID == "" {
 		c.ConsumerID = fmt.Sprintf("roadrunner-%s", uuid.NewString())
 	}
+
+	if c.enableTLS() {
+		if _, err := os.Stat(c.TLS.Key); err != nil {
+			if os.IsNotExist(err) {
+				return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
+			}
+
+			return errors.E(op, err)
+		}
+
+		if _, err := os.Stat(c.TLS.Cert); err != nil {
+			if os.IsNotExist(err) {
+				return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+			}
+
+			return errors.E(op, err)
+		}
+
+		// RootCA is optional, but if provided - check it
+		if c.TLS.RootCA != "" {
+			if _, err := os.Stat(c.TLS.RootCA); err != nil {
+				if os.IsNotExist(err) {
+					return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
+				}
+				return errors.E(op, err)
+			}
+
+			// auth type used only for the CA
+			switch c.TLS.AuthType {
+			case NoClientCert:
+				c.TLS.auth = tls.NoClientCert
+			case RequestClientCert:
+				c.TLS.auth = tls.RequestClientCert
+			case RequireAnyClientCert:
+				c.TLS.auth = tls.RequireAnyClientCert
+			case VerifyClientCertIfGiven:
+				c.TLS.auth = tls.VerifyClientCertIfGiven
+			case RequireAndVerifyClientCert:
+				c.TLS.auth = tls.RequireAndVerifyClientCert
+			default:
+				c.TLS.auth = tls.NoClientCert
+			}
+		}
+	}
+
+	return nil
+}
+
+func (c *config) enableTLS() bool {
+	if c.TLS != nil {
+		return (c.TLS.RootCA != "" && c.TLS.Key != "" && c.TLS.Cert != "") || (c.TLS.Key != "" && c.TLS.Cert != "")
+	}
+	return false
 }
