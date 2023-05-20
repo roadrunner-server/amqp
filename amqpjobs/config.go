@@ -59,8 +59,8 @@ const (
 type config struct {
 	// global
 	Addr string `mapstructure:"addr"`
-	// global TLS option
 
+	// global TLS option
 	TLS *TLS `mapstructure:"tls"`
 
 	// local
@@ -96,7 +96,7 @@ type TLS struct {
 	Key      string         `mapstructure:"key"`
 	Cert     string         `mapstructure:"cert"`
 	AuthType ClientAuthType `mapstructure:"client_auth_type"`
-	// auth type
+	// auth type internal
 	auth tls.ClientAuthType
 }
 
