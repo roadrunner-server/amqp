@@ -92,9 +92,9 @@ type config struct {
 
 // TLS
 type TLS struct {
+	RootCA   string         `mapstructure:"root_ca"`
 	Key      string         `mapstructure:"key"`
 	Cert     string         `mapstructure:"cert"`
-	RootCA   string         `mapstructure:"root_ca"`
 	AuthType ClientAuthType `mapstructure:"client_auth_type"`
 	// auth type
 	auth tls.ClientAuthType
