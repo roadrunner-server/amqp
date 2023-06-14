@@ -2,8 +2,7 @@ package amqp
 
 import (
 	"github.com/roadrunner-server/amqp/v4/amqpjobs"
-	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
-	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
+	"github.com/roadrunner-server/api/v4/plugins/v2/jobs"
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
@@ -56,11 +55,11 @@ func (p *Plugin) Collects() []*dep.In {
 }
 
 // DriverFromConfig constructs kafka driver from the .rr.yaml configuration
-func (p *Plugin) DriverFromConfig(configKey string, pq pq.Queue, pipeline jobs.Pipeline, _ chan<- jobs.Commander) (jobs.Driver, error) {
+func (p *Plugin) DriverFromConfig(configKey string, pq jobs.Queue, pipeline jobs.Pipeline, _ chan<- jobs.Commander) (jobs.Driver, error) {
 	return amqpjobs.FromConfig(p.tracer, configKey, p.log, p.cfg, pipeline, pq)
 }
 
 // DriverFromPipeline constructs kafka driver from pipeline
-func (p *Plugin) DriverFromPipeline(pipe jobs.Pipeline, pq pq.Queue, _ chan<- jobs.Commander) (jobs.Driver, error) {
+func (p *Plugin) DriverFromPipeline(pipe jobs.Pipeline, pq jobs.Queue, _ chan<- jobs.Commander) (jobs.Driver, error) {
 	return amqpjobs.FromPipeline(p.tracer, pipe, p.log, p.cfg, pq)
 }

@@ -19,6 +19,11 @@ require (
 	golang.org/x/sys v0.8.0
 )
 
+replace (
+	github.com/roadrunner-server/api/v4 => ../../api
+	github.com/roadrunner-server/sdk/v4 => ../../sdk
+)
+
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect

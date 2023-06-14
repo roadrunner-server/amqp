@@ -10,12 +10,12 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v2/jobs"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
 
-var _ jobs.Acknowledger = (*Item)(nil)
+var _ jobs.Job = (*Item)(nil)
 
 const (
 	auto string = "deduced_by_rr"
@@ -29,7 +29,7 @@ type Item struct {
 	// Payload is string data (usually JSON) passed to Job broker.
 	Payload string `json:"payload"`
 	// Headers with key-values pairs
-	Headers map[string][]string `json:"headers"`
+	headers map[string][]string
 	// Options contains set of PipelineOptions specific to job execution. Can be empty.
 	Options *Options `json:"options,omitempty"`
 }
@@ -76,6 +76,10 @@ func (i *Item) ID() string {
 	return i.Ident
 }
 
+func (i *Item) PipelineID() string {
+	return i.Options.Pipeline
+}
+
 func (i *Item) Priority() int64 {
 	return i.Options.Priority
 }
@@ -85,8 +89,8 @@ func (i *Item) Body() []byte {
 	return strToBytes(i.Payload)
 }
 
-func (i *Item) Metadata() map[string][]string {
-	return i.Headers
+func (i *Item) Headers() map[string][]string {
+	return i.headers
 }
 
 // Context packs job context (job, id) into binary payload.
@@ -104,7 +108,7 @@ func (i *Item) Context() ([]byte, error) {
 			ID:       i.Ident,
 			Job:      i.Job,
 			Driver:   pluginName,
-			Headers:  i.Headers,
+			Headers:  i.headers,
 			Queue:    i.Options.Queue,
 			Pipeline: i.Options.Pipeline,
 		},
@@ -136,9 +140,10 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 	if i.Options.Delay > 0 {
 		atomic.AddInt64(i.Options.delayed, ^int64(0))
 	}
+
 	// overwrite the delay
 	i.Options.Delay = delay
-	i.Headers = headers
+	i.headers = headers
 
 	err := i.Options.requeueFn(context.Background(), i)
 	if err != nil {
@@ -184,7 +189,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 				Job:     auto,
 				Ident:   id,
 				Payload: bytesToStr(deliv.Body),
-				Headers: convHeaders(deliv.Headers),
+				headers: convHeaders(deliv.Headers),
 				Options: &Options{
 					Priority: 10,
 					Queue:    d.queue,
@@ -208,7 +213,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 		Job:     item.Job,
 		Ident:   item.Ident,
 		Payload: item.Payload,
-		Headers: item.Headers,
+		headers: item.headers,
 		Options: item.Options,
 	}
 
@@ -235,15 +240,15 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 	return i, nil
 }
 
-func fromJob(job jobs.Job) *Item {
+func fromJob(job jobs.Message) *Item {
 	return &Item{
 		Job:     job.Name(),
 		Ident:   job.ID(),
 		Payload: job.Payload(),
-		Headers: job.Headers(),
+		headers: job.Headers(),
 		Options: &Options{
 			Priority: job.Priority(),
-			Pipeline: job.Pipeline(),
+			Pipeline: job.PipelineID(),
 			Delay:    job.Delay(),
 			AutoAck:  job.AutoAck(),
 		},
@@ -252,7 +257,7 @@ func fromJob(job jobs.Job) *Item {
 
 // pack job metadata into headers
 func pack(id string, j *Item) (amqp.Table, error) {
-	h, err := json.Marshal(j.Headers)
+	h, err := json.Marshal(j.headers)
 	if err != nil {
 		return nil, err
 	}
@@ -296,7 +301,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 	}
 
 	if h, ok := deliv.Headers[jobs.RRHeaders].([]byte); ok {
-		err := json.Unmarshal(h, &item.Headers)
+		err := json.Unmarshal(h, &item.headers)
 		if err != nil {
 			return nil, errors.E(err, errors.Decode)
 		}
