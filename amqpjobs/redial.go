@@ -34,7 +34,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -58,7 +58,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -82,7 +82,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -106,7 +106,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}

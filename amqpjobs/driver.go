@@ -84,7 +84,7 @@ type Driver struct {
 	listeners uint32
 	delayed   *int64
 	stopCh    chan struct{}
-	stopped   uint32
+	stopped   uint64
 }
 
 // FromConfig initializes rabbitmq pipeline
@@ -583,7 +583,7 @@ func (d *Driver) Stop(ctx context.Context) error {
 	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_stop")
 	defer span.End()
 
-	atomic.StoreUint32(&d.stopped, 1)
+	atomic.StoreUint64(&d.stopped, 1)
 	d.stopCh <- struct{}{}
 
 	pipe := *d.pipeline.Load()

@@ -49,6 +49,7 @@ type Options struct {
 	Queue string `json:"queue,omitempty"`
 
 	// private
+	stopped *uint64
 	// ack delegates an acknowledgement through the Acknowledger interface that the client or server has finished work on a delivery
 	ack func(multiply bool) error
 
@@ -122,6 +123,9 @@ func (i *Item) Context() ([]byte, error) {
 }
 
 func (i *Item) Ack() error {
+	if atomic.LoadUint64(i.Options.stopped) == 1 {
+		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
+	}
 	if i.Options.Delay > 0 {
 		atomic.AddInt64(i.Options.delayed, ^int64(0))
 	}
@@ -129,6 +133,9 @@ func (i *Item) Ack() error {
 }
 
 func (i *Item) Nack() error {
+	if atomic.LoadUint64(i.Options.stopped) == 1 {
+		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
+	}
 	if i.Options.Delay > 0 {
 		atomic.AddInt64(i.Options.delayed, ^int64(0))
 	}
@@ -137,6 +144,9 @@ func (i *Item) Nack() error {
 
 // Requeue with the provided delay, handled by the Nack
 func (i *Item) Requeue(headers map[string][]string, delay int64) error {
+	if atomic.LoadUint64(i.Options.stopped) == 1 {
+		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
+	}
 	if i.Options.Delay > 0 {
 		atomic.AddInt64(i.Options.delayed, ^int64(0))
 	}
@@ -196,6 +206,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 					// in case of `deduced_by_rr` type of the JOB, we're sending a queue name
 					Pipeline:    (*d.pipeline.Load()).Name(),
 					AutoAck:     false,
+					stopped:     &d.stopped,
 					ack:         deliv.Ack,
 					nack:        deliv.Nack,
 					requeueFn:   d.handleItem,
@@ -234,6 +245,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 		item.Options.nack = deliv.Nack
 	}
 
+	item.Options.stopped = &d.stopped
 	item.Options.delayed = d.delayed
 	// requeue func
 	item.Options.requeueFn = d.handleItem
