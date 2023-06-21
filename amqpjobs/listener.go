@@ -16,7 +16,7 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 		for msg := range deliv {
 			del, err := d.fromDelivery(msg)
 
-			ctx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(del.Headers))
+			ctx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(del.headers))
 			ctx, span := d.tracer.Tracer(tracerName).Start(ctx, "amqp_listener")
 
 			if err != nil {
@@ -35,7 +35,7 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 				}
 
 				if d != nil {
-					del.Headers = nil
+					del.headers = nil
 					del.Options = nil
 				}
 				continue
@@ -46,11 +46,11 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 				_ = msg.Ack(false)
 			}
 
-			if del.Headers == nil {
-				del.Headers = make(map[string][]string, 2)
+			if del.headers == nil {
+				del.headers = make(map[string][]string, 2)
 			}
 
-			d.prop.Inject(ctx, propagation.HeaderCarrier(del.Headers))
+			d.prop.Inject(ctx, propagation.HeaderCarrier(del.headers))
 			// insert job into the main priority queue
 			d.pq.Insert(del)
 			span.End()

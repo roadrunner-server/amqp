@@ -13,8 +13,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v4/plugins/v1/jobs"
-	pq "github.com/roadrunner-server/api/v4/plugins/v1/priority_queue"
+	"github.com/roadrunner-server/api/v4/plugins/v2/jobs"
 	"github.com/roadrunner-server/errors"
 	jprop "go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
@@ -41,7 +40,7 @@ type Configurer interface {
 type Driver struct {
 	mu         sync.Mutex
 	log        *zap.Logger
-	pq         pq.Queue
+	pq         jobs.Queue
 	pipeline   atomic.Pointer[jobs.Pipeline]
 	consumeAll bool
 	tracer     *sdktrace.TracerProvider
@@ -85,11 +84,11 @@ type Driver struct {
 	listeners uint32
 	delayed   *int64
 	stopCh    chan struct{}
-	stopped   uint32
+	stopped   uint64
 }
 
 // FromConfig initializes rabbitmq pipeline
-func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq pq.Queue) (*Driver, error) {
+func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq jobs.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer")
 
 	if tracer == nil {
@@ -209,7 +208,7 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 }
 
 // FromPipeline initializes consumer from pipeline
-func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq pq.Queue) (*Driver, error) {
+func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq jobs.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
 	if tracer == nil {
 		tracer = sdktrace.NewTracerProvider()
@@ -340,7 +339,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	return jb, nil
 }
 
-func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
+func (d *Driver) Push(ctx context.Context, job jobs.Message) error {
 	const op = errors.Op("rabbitmq_push")
 	// check if the pipeline registered
 
@@ -353,8 +352,8 @@ func (d *Driver) Push(ctx context.Context, job jobs.Job) error {
 
 	// load atomic value
 	pipe := *d.pipeline.Load()
-	if pipe.Name() != job.Pipeline() {
-		return errors.E(op, errors.Errorf("no such pipeline: %s, actual: %s", job.Pipeline(), pipe.Name()))
+	if pipe.Name() != job.GroupID() {
+		return errors.E(op, errors.Errorf("no such pipeline: %s, actual: %s", job.GroupID(), pipe.Name()))
 	}
 
 	err := d.handleItem(ctx, fromJob(job))
@@ -584,7 +583,7 @@ func (d *Driver) Stop(ctx context.Context) error {
 	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_stop")
 	defer span.End()
 
-	atomic.StoreUint32(&d.stopped, 1)
+	atomic.StoreUint64(&d.stopped, 1)
 	d.stopCh <- struct{}{}
 
 	pipe := *d.pipeline.Load()
@@ -603,7 +602,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			d.publishChan <- pch
 		}()
 
-		d.prop.Inject(ctx, propagation.HeaderCarrier(msg.Headers))
+		d.prop.Inject(ctx, propagation.HeaderCarrier(msg.headers))
 
 		// convert
 		table, err := pack(msg.ID(), msg)

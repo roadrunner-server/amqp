@@ -7,7 +7,7 @@ require (
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.3.0
 	github.com/rabbitmq/amqp091-go v1.8.1
-	github.com/roadrunner-server/api/v4 v4.3.2
+	github.com/roadrunner-server/api/v4 v4.5.0
 	github.com/roadrunner-server/endure/v2 v2.2.1
 	github.com/roadrunner-server/errors v1.2.0
 	github.com/stretchr/testify v1.8.4
@@ -16,7 +16,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.16.0
 	go.opentelemetry.io/otel/trace v1.16.0
 	go.uber.org/zap v1.24.0
-	golang.org/x/sys v0.8.0
+	golang.org/x/sys v0.9.0
 )
 
 require (

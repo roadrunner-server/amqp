@@ -34,7 +34,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -58,7 +58,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -82,7 +82,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -106,7 +106,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint32(&d.stopped) == 1 {
+				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("redialer stopped")
 					continue
 				}
@@ -129,15 +129,30 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				pch := <-d.publishChan
 				stCh := <-d.stateChan
 
+				// cancel new deliviries
+				err := pch.Cancel(d.consumeID, false)
+				if err != nil {
+					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.consumeID))
+				}
+
+				// wait for the listener to stop
+				for atomic.CompareAndSwapUint32(&d.listeners, 1, 0) {
+					time.Sleep(time.Millisecond)
+				}
+
+				// remove the items associated with that pipeline from the priority_queue
+				_ = d.pq.Remove((*d.pipeline.Load()).Name())
+
 				if d.deleteQueueOnStop {
-					msg, err := pch.QueueDelete(d.queue, false, false, false)
+					var n int
+					n, err = pch.QueueDelete(d.queue, false, false, false)
 					if err != nil {
 						d.log.Error("queue delete", zap.Error(err))
 					}
-					d.log.Debug("number of purged messages", zap.Int("count", msg))
+					d.log.Debug("number of purged messages", zap.Int("count", n))
 				}
 
-				err := pch.Close()
+				err = pch.Close()
 				if err != nil {
 					d.log.Error("publish channel close", zap.Error(err))
 				}
