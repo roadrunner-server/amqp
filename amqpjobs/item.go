@@ -77,7 +77,7 @@ func (i *Item) ID() string {
 	return i.Ident
 }
 
-func (i *Item) PipelineID() string {
+func (i *Item) GroupID() string {
 	return i.Options.Pipeline
 }
 
@@ -260,7 +260,7 @@ func fromJob(job jobs.Message) *Item {
 		headers: job.Headers(),
 		Options: &Options{
 			Priority: job.Priority(),
-			Pipeline: job.PipelineID(),
+			Pipeline: job.GroupID(),
 			Delay:    job.Delay(),
 			AutoAck:  job.AutoAck(),
 		},
