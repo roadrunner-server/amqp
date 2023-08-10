@@ -25,8 +25,8 @@ github.com/rabbitmq/amqp091-go v1.8.1 h1:RejT1SBUim5doqcL6s7iN6SBmsQqyTgXb1xMlH0
 github.com/rabbitmq/amqp091-go v1.8.1/go.mod h1:+jPrT9iY2eLjRaMSRHUhc3z14E/l85kv/f+6luSD3pc=
 github.com/roadrunner-server/api/v4 v4.6.1 h1:udsAn3NS+gLPy2ikCXeem2K29AGGzl+pa6Rpt+dRtGo=
 github.com/roadrunner-server/api/v4 v4.6.1/go.mod h1:4ck9hmTREYFudwIbzqYABCUdnBYNvB7rC6U9xebwwQg=
-github.com/roadrunner-server/endure/v2 v2.3.1 h1:3ene87OJ/Ct2kyQT7+2VsfNzT+F1oPZbAqkJZFfvy5s=
-github.com/roadrunner-server/endure/v2 v2.3.1/go.mod h1:8lhfx3yDm9Jay/KPX0VbmOFnjY4gB4YABoHjSNfY3Ns=
+github.com/roadrunner-server/endure/v2 v2.4.1 h1:ukwAoMQoUqPsD4Fu4wCeG84FfN/dGqy2a1F9ufl4vH8=
+github.com/roadrunner-server/endure/v2 v2.4.1/go.mod h1:uBmTMeZYtKTT8+aa2Ge/FH95G/VACj0QpZ8yf36wn6Y=
 github.com/roadrunner-server/errors v1.2.0 h1:qBmNXt8Iex9QnYTjCkbJKsBZu2EtYkQCM06GUDcQBbI=
 github.com/roadrunner-server/errors v1.2.0/go.mod h1:z0ECxZp/dDa5RahtMcy4mBIavVxiZ9vwE5kByl7kFtY=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
