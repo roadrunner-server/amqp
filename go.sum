@@ -23,8 +23,8 @@ github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZb
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rabbitmq/amqp091-go v1.8.1 h1:RejT1SBUim5doqcL6s7iN6SBmsQqyTgXb1xMlH0h1hA=
 github.com/rabbitmq/amqp091-go v1.8.1/go.mod h1:+jPrT9iY2eLjRaMSRHUhc3z14E/l85kv/f+6luSD3pc=
-github.com/roadrunner-server/api/v4 v4.6.1 h1:udsAn3NS+gLPy2ikCXeem2K29AGGzl+pa6Rpt+dRtGo=
-github.com/roadrunner-server/api/v4 v4.6.1/go.mod h1:4ck9hmTREYFudwIbzqYABCUdnBYNvB7rC6U9xebwwQg=
+github.com/roadrunner-server/api/v4 v4.6.2 h1:BsbVb7Y0Dsz1/6GMja/yVcOAbozHbYQ3i24DTLh7geI=
+github.com/roadrunner-server/api/v4 v4.6.2/go.mod h1:7RPouCwEAZSfWKU5eAf5Bc6snFw97RvfWk1Mz+kaKLQ=
 github.com/roadrunner-server/endure/v2 v2.3.1 h1:3ene87OJ/Ct2kyQT7+2VsfNzT+F1oPZbAqkJZFfvy5s=
 github.com/roadrunner-server/endure/v2 v2.3.1/go.mod h1:8lhfx3yDm9Jay/KPX0VbmOFnjY4gB4YABoHjSNfY3Ns=
 github.com/roadrunner-server/errors v1.2.0 h1:qBmNXt8Iex9QnYTjCkbJKsBZu2EtYkQCM06GUDcQBbI=
