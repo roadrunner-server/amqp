@@ -38,6 +38,7 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 					del.headers = nil
 					del.Options = nil
 				}
+				span.End()
 				continue
 			}
 
