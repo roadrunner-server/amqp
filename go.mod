@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/rabbitmq/amqp091-go v1.8.1
 	github.com/roadrunner-server/api/v4 v4.6.2
-	github.com/roadrunner-server/endure/v2 v2.4.1
+	github.com/roadrunner-server/endure/v2 v2.4.2
 	github.com/roadrunner-server/errors v1.3.0
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/contrib/propagators/jaeger v1.17.0
