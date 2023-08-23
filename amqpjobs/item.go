@@ -5,12 +5,11 @@ import (
 	stderr "errors"
 	"sync/atomic"
 	"time"
-	"unsafe"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v4/plugins/v2/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v3/jobs"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
@@ -27,7 +26,7 @@ type Item struct {
 	// Ident is unique identifier of the job, should be provided from outside
 	Ident string `json:"id"`
 	// Payload is string data (usually JSON) passed to Job broker.
-	Payload string `json:"payload"`
+	Payload []byte `json:"payload"`
 	// Headers with key-values pairs
 	headers map[string][]string
 	// Options contains set of PipelineOptions specific to job execution. Can be empty.
@@ -87,7 +86,7 @@ func (i *Item) Priority() int64 {
 
 // Body packs job payload into binary payload.
 func (i *Item) Body() []byte {
-	return strToBytes(i.Payload)
+	return i.Payload
 }
 
 func (i *Item) Headers() map[string][]string {
@@ -179,64 +178,18 @@ func (i *Item) Respond(_ []byte, _ string) error {
 }
 
 // fromDelivery converts amqp.Delivery into an Item which will be pushed to the PQ
-func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
-	const op = errors.Op("from_delivery_convert")
-	item, err := d.unpack(deliv)
-	if err != nil {
-		// can't decode the delivery
-		if errors.Is(errors.Decode, err) && d.consumeAll {
-			id := uuid.NewString()
-			d.log.Debug("get raw payload", zap.String("assigned ID", id))
-
-			if isJSONEncoded(deliv.Body) != nil {
-				deliv.Body, err = json.Marshal(deliv.Body)
-				if err != nil {
-					return nil, err
-				}
-			}
-
-			return &Item{
-				Job:     auto,
-				Ident:   id,
-				Payload: bytesToStr(deliv.Body),
-				headers: convHeaders(deliv.Headers),
-				Options: &Options{
-					Priority: 10,
-					Queue:    d.queue,
-					// in case of `deduced_by_rr` type of the JOB, we're sending a queue name
-					Pipeline:    (*d.pipeline.Load()).Name(),
-					AutoAck:     false,
-					stopped:     &d.stopped,
-					ack:         deliv.Ack,
-					nack:        deliv.Nack,
-					requeueFn:   d.handleItem,
-					delayed:     d.delayed,
-					multipleAck: false,
-					requeue:     false,
-				},
-			}, nil
-		}
-
-		return nil, errors.E(op, err)
-	}
-
-	i := &Item{
-		Job:     item.Job,
-		Ident:   item.Ident,
-		Payload: item.Payload,
-		headers: item.headers,
-		Options: item.Options,
-	}
+func (d *Driver) fromDelivery(deliv amqp.Delivery) *Item {
+	item := d.unpack(deliv)
 
 	switch item.Options.AutoAck {
 	case true:
 		d.log.Debug("using auto acknowledge for the job")
 		// stubs for ack/nack
-		item.Options.ack = func(_ bool) error {
+		item.Options.ack = func(bool) error {
 			return nil
 		}
 
-		item.Options.nack = func(_ bool, _ bool) error {
+		item.Options.nack = func(bool, bool) error {
 			return nil
 		}
 	case false:
@@ -249,7 +202,8 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) (*Item, error) {
 	item.Options.delayed = d.delayed
 	// requeue func
 	item.Options.requeueFn = d.handleItem
-	return i, nil
+
+	return item
 }
 
 func fromJob(job jobs.Message) *Item {
@@ -285,28 +239,32 @@ func pack(id string, j *Item) (amqp.Table, error) {
 }
 
 // unpack restores jobs.Options
-func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
+func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	item := &Item{
-		Payload: bytesToStr(deliv.Body),
+		headers: convHeaders(deliv.Headers),
+		Payload: deliv.Body,
 		Options: &Options{
+			Pipeline:    (*d.pipeline.Load()).Name(),
+			Queue:       d.queue,
+			requeueFn:   d.handleItem,
 			multipleAck: d.multipleAck,
 			requeue:     d.requeueOnFail,
-			requeueFn:   d.handleItem,
-			Queue:       d.queue,
 		},
 	}
 
 	if _, ok := deliv.Headers[jobs.RRID].(string); !ok {
-		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRID), errors.Decode)
+		item.Ident = uuid.NewString()
+		d.log.Debug("missing header rr_id, generating new one", zap.String("assigned ID", item.Ident))
+	} else {
+		item.Ident = deliv.Headers[jobs.RRID].(string)
 	}
-
-	item.Ident = deliv.Headers[jobs.RRID].(string)
 
 	if _, ok := deliv.Headers[jobs.RRJob].(string); !ok {
-		return nil, errors.E(errors.Errorf("missing header `%s`", jobs.RRJob), errors.Decode)
+		item.Job = auto
+		d.log.Debug("missing header rr_job, using the standard one", zap.String("assigned ID", item.Job))
+	} else {
+		item.Job = deliv.Headers[jobs.RRJob].(string)
 	}
-
-	item.Job = deliv.Headers[jobs.RRJob].(string)
 
 	if _, ok := deliv.Headers[jobs.RRPipeline].(string); ok {
 		item.Options.Pipeline = deliv.Headers[jobs.RRPipeline].(string)
@@ -315,7 +273,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 	if h, ok := deliv.Headers[jobs.RRHeaders].([]byte); ok {
 		err := json.Unmarshal(h, &item.headers)
 		if err != nil {
-			return nil, errors.E(err, errors.Decode)
+			d.log.Warn("failed to unmarshal headers (should be JSON), continuing execution", zap.Any("headers", item.headers), zap.Error(err))
 		}
 	}
 
@@ -341,31 +299,10 @@ func (d *Driver) unpack(deliv amqp.Delivery) (*Item, error) {
 	}
 
 	if aa, ok := deliv.Headers[jobs.RRAutoAck]; ok {
-		if val, ok := aa.(bool); ok {
+		if val, ok2 := aa.(bool); ok2 {
 			item.Options.AutoAck = val
 		}
 	}
 
-	return item, nil
-}
-
-func isJSONEncoded(data []byte) error {
-	var a any
-	return json.Unmarshal(data, &a)
-}
-
-func bytesToStr(data []byte) string {
-	if len(data) == 0 {
-		return ""
-	}
-
-	return unsafe.String(unsafe.SliceData(data), len(data))
-}
-
-func strToBytes(data string) []byte {
-	if data == "" {
-		return nil
-	}
-
-	return unsafe.Slice(unsafe.StringData(data), len(data))
+	return item
 }

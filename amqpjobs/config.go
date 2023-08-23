@@ -90,7 +90,7 @@ type config struct {
 	ConsumerID string `mapstructure:"consumer_id"`
 }
 
-// TLS
+// TLS configuration
 type TLS struct {
 	RootCA   string         `mapstructure:"root_ca"`
 	Key      string         `mapstructure:"key"`

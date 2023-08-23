@@ -6,7 +6,6 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
-	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/propagation"
 	"go.uber.org/zap"
 )
@@ -14,33 +13,10 @@ import (
 func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 	go func() {
 		for msg := range deliv {
-			del, err := d.fromDelivery(msg)
+			del := d.fromDelivery(msg)
 
 			ctx := otel.GetTextMapPropagator().Extract(context.Background(), propagation.HeaderCarrier(del.headers))
 			ctx, span := d.tracer.Tracer(tracerName).Start(ctx, "amqp_listener")
-
-			if err != nil {
-				span.SetAttributes(attribute.KeyValue{
-					Key:   "error",
-					Value: attribute.StringValue(err.Error()),
-				})
-
-				d.log.Error("delivery convert", zap.Error(err))
-				/*
-					Acknowledge failed job to prevent endless loo;
-				*/
-				err = msg.Ack(false)
-				if err != nil {
-					d.log.Error("nack failed", zap.Error(err))
-				}
-
-				if d != nil {
-					del.headers = nil
-					del.Options = nil
-				}
-				span.End()
-				continue
-			}
 
 			if del.Options.AutoAck {
 				// we don't care about error here, since the job is not important
