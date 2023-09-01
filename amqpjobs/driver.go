@@ -24,8 +24,9 @@ import (
 )
 
 const (
-	pluginName string = "amqp"
-	tracerName string = "jobs"
+	xRoutingKey        = "x_routing_key"
+	pluginName  string = "amqp"
+	tracerName  string = "jobs"
 )
 
 var _ jobs.Driver = (*Driver)(nil)
@@ -604,6 +605,8 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 
 		d.prop.Inject(ctx, propagation.HeaderCarrier(msg.headers))
 
+		rk := d.setRoutingKey(msg.headers)
+
 		// convert
 		table, err := pack(msg.ID(), msg)
 		if err != nil {
@@ -619,7 +622,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, d.exchangeName, d.queue)
 			_, err = pch.QueueDeclare(tmpQ, true, false, false, false, amqp.Table{
 				dlx:           d.exchangeName,
-				dlxRoutingKey: d.routingKey,
+				dlxRoutingKey: rk,
 				dlxTTL:        delayMs,
 				dlxExpires:    delayMs * 2,
 			})
@@ -651,7 +654,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			return nil
 		}
 
-		err = pch.PublishWithContext(ctx, d.exchangeName, d.routingKey, false, false, amqp.Publishing{
+		err = pch.PublishWithContext(ctx, d.exchangeName, rk, false, false, amqp.Publishing{
 			Headers:      table,
 			ContentType:  contentType,
 			Timestamp:    time.Now().UTC(),
@@ -701,4 +704,15 @@ func ready(r uint32) bool {
 
 func ptrTo[T any](val T) *T {
 	return &val
+}
+
+func (d *Driver) setRoutingKey(headers map[string][]string) string {
+	if val, ok := headers[xRoutingKey]; ok {
+		delete(headers, xRoutingKey)
+		if val[0] != "" {
+			return val[0]
+		}
+	}
+
+	return d.routingKey
 }
