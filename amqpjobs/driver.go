@@ -709,7 +709,7 @@ func ptrTo[T any](val T) *T {
 func (d *Driver) setRoutingKey(headers map[string][]string) string {
 	if val, ok := headers[xRoutingKey]; ok {
 		delete(headers, xRoutingKey)
-		if val[0] != "" {
+		if len(val) == 1 && val[0] != "" {
 			return val[0]
 		}
 	}
