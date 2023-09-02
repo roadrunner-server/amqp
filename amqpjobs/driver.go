@@ -24,7 +24,7 @@ import (
 )
 
 const (
-	xRoutingKey        = "x_routing_key"
+	xRoutingKey        = "x-routing-key"
 	pluginName  string = "amqp"
 	tracerName  string = "jobs"
 )
