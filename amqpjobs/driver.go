@@ -436,7 +436,24 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 			d.stateChan <- stateCh
 		}()
 
+		pipe := *d.pipeline.Load()
+
+		// if there is no queue, check the connection instead
 		if d.queue == "" {
+			// d.conn should be protected (redial)
+			d.mu.Lock()
+			defer d.mu.Unlock()
+
+			if !d.conn.IsClosed() {
+				return &jobs.State{
+					Priority: uint64(pipe.Priority()),
+					Pipeline: pipe.Name(),
+					Driver:   pipe.Driver(),
+					Delayed:  atomic.LoadInt64(d.delayed),
+					Ready:    ready(atomic.LoadUint32(&d.listeners)),
+				}, nil
+			}
+
 			return nil, errors.Str("empty queue name, add queue to the AMQP configuration")
 		}
 
@@ -453,8 +470,6 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
-
-		pipe := *d.pipeline.Load()
 
 		return &jobs.State{
 			Priority: uint64(pipe.Priority()),
@@ -498,9 +513,9 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	err := d.consumeChan.Cancel(d.consumeID, true)
+	err := d.consumeChan.Flow(false)
 	if err != nil {
-		d.log.Error("cancel publish channel, forcing close", zap.Error(err))
+		d.log.Error("flow (pause)", zap.Error(err))
 		errCl := d.consumeChan.Close()
 		if errCl != nil {
 			return stderr.Join(errCl, err)
@@ -508,7 +523,12 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 		return err
 	}
 
-	d.log.Debug("pipeline was paused", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	d.log.Debug("pipeline was paused",
+		zap.String("driver", pipe.Driver()),
+		zap.String("pipeline", pipe.Name()),
+		zap.Time("start", start),
+		zap.Duration("elapsed", time.Since(start)),
+	)
 
 	return nil
 }
@@ -538,38 +558,15 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 		return errors.Str("amqp listener is already in the active state")
 	}
 
-	var err error
-	err = d.declareQueue()
+	err := d.consumeChan.Flow(true)
 	if err != nil {
+		d.log.Error("flow (pause)", zap.Error(err))
+		errCl := d.consumeChan.Close()
+		if errCl != nil {
+			return stderr.Join(errCl, err)
+		}
 		return err
 	}
-
-	d.consumeChan, err = d.conn.Channel()
-	if err != nil {
-		return err
-	}
-
-	err = d.consumeChan.Qos(d.prefetch, 0, false)
-	if err != nil {
-		return err
-	}
-
-	// start reading messages from the channel
-	deliv, err := d.consumeChan.Consume(
-		d.queue,
-		d.consumeID,
-		false,
-		false,
-		false,
-		false,
-		nil,
-	)
-	if err != nil {
-		return err
-	}
-
-	// run listener
-	d.listener(deliv)
 
 	// increase number of listeners
 	atomic.AddUint32(&d.listeners, 1)
