@@ -501,9 +501,8 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
-	l := atomic.LoadUint32(&d.listeners)
 	// no active listeners
-	if l == 0 {
+	if atomic.LoadUint32(&d.listeners) == 0 {
 		return errors.Str("no active listeners, nothing to pause")
 	}
 
@@ -513,9 +512,9 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	err := d.consumeChan.Flow(false)
+	err := d.consumeChan.Cancel(d.consumeID, true)
 	if err != nil {
-		d.log.Error("flow (pause)", zap.Error(err))
+		d.log.Error("cancel publish channel, forcing close", zap.Error(err))
 		errCl := d.consumeChan.Close()
 		if errCl != nil {
 			return stderr.Join(errCl, err)
@@ -552,25 +551,52 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	l := atomic.LoadUint32(&d.listeners)
 	// no active listeners
-	if l == 1 {
+	if atomic.LoadUint32(&d.listeners) == 1 {
 		return errors.Str("amqp listener is already in the active state")
 	}
 
-	err := d.consumeChan.Flow(true)
+	var err error
+	err = d.declareQueue()
 	if err != nil {
-		d.log.Error("flow (pause)", zap.Error(err))
-		errCl := d.consumeChan.Close()
-		if errCl != nil {
-			return stderr.Join(errCl, err)
-		}
 		return err
 	}
 
+	d.consumeChan, err = d.conn.Channel()
+	if err != nil {
+		return err
+	}
+
+	err = d.consumeChan.Qos(d.prefetch, 0, false)
+	if err != nil {
+		return err
+	}
+
+	// start reading messages from the channel
+	deliv, err := d.consumeChan.Consume(
+		d.queue,
+		d.consumeID,
+		false,
+		false,
+		false,
+		false,
+		nil,
+	)
+	if err != nil {
+		return err
+	}
+
+	// run listener
+	d.listener(deliv)
+
 	// increase number of listeners
 	atomic.AddUint32(&d.listeners, 1)
-	d.log.Debug("pipeline was resumed", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Duration("elapsed", time.Since(start)))
+	d.log.Debug("pipeline was resumed",
+		zap.String("driver", pipe.Driver()),
+		zap.String("pipeline", pipe.Name()),
+		zap.Time("start", start),
+		zap.Duration("elapsed", time.Since(start)),
+	)
 
 	return nil
 }
