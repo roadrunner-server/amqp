@@ -8,16 +8,12 @@ services:
       - ../test-certs/:/var/rabbitmq/
     ports:
       - "127.0.0.1:5677:5671"
-    networks:
-      amqptls:
 
   rabbitmq:
     image: rabbitmq:3-management
     ports:
       - "127.0.0.1:15672:15672"
       - "127.0.0.1:5672:5672"
-    networks:
-      amqp:
 
   rabbitmq_slow:
     image: rabbitmq:3-management
@@ -26,8 +22,6 @@ services:
     ports:
       - "127.0.0.1:15673:15672"
       - "127.0.0.1:5673:5672"
-    networks:
-      amqp:
 
   collector:
     image: otel/opentelemetry-collector-contrib
@@ -36,15 +30,11 @@ services:
       - ./otel-collector-config.yml:/etc/otel-collector-config.yml
     ports:
       - "4318:4318"
-    networks:
-      otel:
 
   zipkin:
     image: openzipkin/zipkin-slim
     ports:
       - "9411:9411"
-    networks:
-      otel:
 
   jaeger:
     image: jaegertracing/all-in-one:latest
@@ -55,13 +45,3 @@ services:
     environment:
       - LOG_LEVEL=debug
       - COLLECTOR_OTLP_ENABLED=true
-    networks:
-      otel:
-
-networks:
-  amqp:
-    name: amqp
-  amqptls:
-    name: amqptls
-  otel:
-    name: otel
