@@ -84,7 +84,7 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: coverage
-          path: ./coverage-ci/amqp.out
+          path: ./tests/coverage-ci/amqp.out
 
   codecov:
     name: Upload codecov
