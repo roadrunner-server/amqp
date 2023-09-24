@@ -4,7 +4,7 @@ rpc:
   listen: tcp://127.0.0.1:6601
 
 server:
-  command: "php ../../../php_test_files/jobs/jobs_ok_pq.php"
+  command: "php ../php_test_files/jobs/jobs_ok_pq.php"
   relay: "pipes"
 
 amqp:

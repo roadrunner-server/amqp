@@ -4,7 +4,7 @@ rpc:
   listen: tcp://127.0.0.1:6001
 
 server:
-  command: "php ../../../php_test_files/jobs/jobs_ok_queue_name_exist.php"
+  command: "php ../php_test_files/jobs/jobs_ok_queue_name_exist.php"
   relay: "pipes"
   relay_timeout: "20s"
 
