@@ -1,4 +1,4 @@
-module github.com/roadrunner-server/amqp/v4/tests
+module tests
 
 go 1.21
 
@@ -25,7 +25,7 @@ require (
 	go.uber.org/zap v1.26.0
 )
 
-replace github.com/roadrunner-server/amqp/v4 => ../amqpjobs
+replace github.com/roadrunner-server/amqp/v4 => ../
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

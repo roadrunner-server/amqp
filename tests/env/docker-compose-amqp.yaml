@@ -1,0 +1,36 @@
+version: "3.8"
+
+services:
+  rabbitmq_tls:
+    image: rabbitmq:3-management
+    volumes:
+      - ./rabbitmq-tls/:/etc/rabbitmq/
+      - ../test-certs/:/var/rabbitmq/
+    ports:
+      - "127.0.0.1:5677:5671"
+    networks:
+      amqptls:
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5672:5672"
+    networks:
+      amqp:
+
+  rabbitmq_slow:
+    image: rabbitmq:3-management
+    volumes:
+      - ./rabbitmq/rabbitmq.config:/etc/rabbitmq/rabbitmq.config
+    ports:
+      - "127.0.0.1:15673:15672"
+      - "127.0.0.1:5673:5672"
+    networks:
+      amqp:
+
+networks:
+  amqp:
+    name: amqp
+  amqptls:
+    name: amqptls
