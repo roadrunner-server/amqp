@@ -1,0 +1,214 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php ../../../php_test_files/jobs/jobs_ok.php"
+  relay: "pipes"
+
+amqp:
+  addr: amqp://guest:guest@127.0.0.1:5672/
+
+logs:
+  level: debug
+  encoding: console
+  mode: development
+
+jobs:
+  num_pollers: 3
+  pipeline_size: 100000
+  timeout: 1
+  pool:
+    num_workers: 2
+    allocate_timeout: 60s
+    destroy_timeout: 1s
+
+  pipelines:
+    test-1:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-1
+        priority: 1
+        exchange: default
+        routing_key: pl-1
+    test-2:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-2
+        priority: 1
+        exchange: default
+        routing_key: pl-2
+    test-3:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-3
+        priority: 1
+        exchange: default
+        routing_key: pl-3
+    test-4:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-4
+        priority: 1
+        exchange: default
+        routing_key: pl-4
+    test-5:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-5
+        priority: 1
+        exchange: default
+        routing_key: pl-5
+    test-6:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-6
+        priority: 1
+        exchange: default
+        routing_key: pl-6
+    test-7:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-7
+        priority: 1
+        exchange: default
+        routing_key: pl-7
+    test-8:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-8
+        priority: 1
+        exchange: default
+        routing_key: pl-8
+    test-9:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-9
+        priority: 1
+        exchange: default
+        routing_key: pl-9
+    test-10:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-10
+        priority: 1
+        exchange: default
+        routing_key: pl-10
+    test-11:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-11
+        priority: 1
+        exchange: default
+        routing_key: pl-11
+    test-12:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-12
+        priority: 1
+        exchange: default
+        routing_key: pl-12
+    test-13:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-13
+        priority: 1
+        exchange: default
+        routing_key: pl-13
+    test-14:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-14
+        priority: 1
+        exchange: default
+        routing_key: pl-14
+    test-15:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-15
+        priority: 1
+        exchange: default
+        routing_key: pl-15
+    test-16:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-16
+        priority: 1
+        exchange: default
+        routing_key: pl-16
+    test-17:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-17
+        priority: 1
+        exchange: default
+        routing_key: pl-17
+    test-18:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-18
+        priority: 1
+        exchange: default
+        routing_key: pl-18
+    test-19:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-19
+        priority: 1
+        exchange: default
+        routing_key: pl-19
+    test-20:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: pl-20
+        priority: 1
+        exchange: default
+        routing_key: pl-20
+
+
+
+  # list of pipelines to be consumed by the server, keep empty if you want to start consuming manually
+  consume: [
+    "test-1",
+    "test-2",
+    "test-3",
+    "test-4",
+    "test-5",
+    "test-6",
+    "test-7",
+    "test-8",
+    "test-9",
+    "test-10",
+    "test-11",
+    "test-12",
+    "test-13",
+    "test-14",
+    "test-15",
+    "test-16",
+    "test-17",
+    "test-18",
+    "test-19",
+    "test-20",
+  ]
+

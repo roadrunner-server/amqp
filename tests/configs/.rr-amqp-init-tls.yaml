@@ -1,0 +1,66 @@
+
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6111
+
+server:
+  command: "php ../../../php_test_files/jobs/jobs_ok.php"
+  relay: "pipes"
+  relay_timeout: "20s"
+
+amqp:
+  addr: amqps://guest:guest@127.0.0.1:5677/
+  tls:
+    root_ca: ../../../test-certs/rootCA.pem
+    key: ../../../test-certs/localhost+2-client-key.pem
+    cert: ../../../test-certs/localhost+2-client.pem
+    client_auth_type: 'require_and_verify_client_cert'
+
+logs:
+  level: debug
+  encoding: console
+  mode: development
+
+jobs:
+  num_pollers: 2
+  pipeline_size: 100000
+  timeout: 1
+  pool:
+    num_workers: 1
+    allocate_timeout: 60s
+    destroy_timeout: 1s
+
+  pipelines:
+    test-1:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: test-1-queue
+        priority: 1
+        exchange: default
+        delete_queue_on_stop: true
+        exchange_type: direct
+        routing_key: test-1
+        exclusive: false
+        multiple_ack: false
+        requeue_on_fail: false
+
+    test-2:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: test-2-queue
+        priority: 2
+        delete_queue_on_stop: true
+        exchange: default
+        exchange_type: direct
+        routing_key: test-2
+        exclusive: false
+        multiple_ack: false
+        requeue_on_fail: false
+
+
+  # list of pipelines to be consumed by the server, keep empty if you want to start consuming manually
+  consume: [ "test-1", "test-2" ]
+

@@ -1,0 +1,50 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php ../../../php_test_files/jobs/jobs_ok.php"
+  relay: "pipes"
+  relay_timeout: "20s"
+
+amqp:
+  addr: amqp://guest:guest@127.0.0.1:5672/
+
+logs:
+  level: debug
+  encoding: console
+  mode: development
+
+jobs:
+  pipeline_size: 100000
+  pool:
+    num_workers: 2
+    allocate_timeout: 60s
+    destroy_timeout: 1s
+
+  pipelines:
+    test-1:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: test-1-rk1
+        priority: 1
+        exchange: default
+        delete_queue_on_stop: true
+        exchange_type: direct
+        routing_key: x-routing-key
+    test-2:
+      driver: amqp
+      config:
+        prefetch: 100
+        queue: test-1-rk2
+        priority: 1
+        exchange: default
+        delete_queue_on_stop: true
+        exchange_type: direct
+        routing_key: super-routing-key
+
+  # list of pipelines to be consumed by the server, keep empty if you want to start consuming manually
+  consume: [ "test-2" ]
+
