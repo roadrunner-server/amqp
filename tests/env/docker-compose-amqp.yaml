@@ -1,0 +1,47 @@
+version: "3.8"
+
+services:
+  rabbitmq_tls:
+    image: rabbitmq:3-management
+    volumes:
+      - ./rabbitmq-tls/:/etc/rabbitmq/
+      - ../test-certs/:/var/rabbitmq/
+    ports:
+      - "127.0.0.1:5677:5671"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "127.0.0.1:15672:15672"
+      - "127.0.0.1:5672:5672"
+
+  rabbitmq_slow:
+    image: rabbitmq:3-management
+    volumes:
+      - ./rabbitmq/rabbitmq.config:/etc/rabbitmq/rabbitmq.config
+    ports:
+      - "127.0.0.1:15673:15672"
+      - "127.0.0.1:5673:5672"
+
+  collector:
+    image: otel/opentelemetry-collector-contrib
+    command: [ "--config=/etc/otel-collector-config.yml" ]
+    volumes:
+      - ./otel-collector-config.yml:/etc/otel-collector-config.yml
+    ports:
+      - "4318:4318"
+
+  zipkin:
+    image: openzipkin/zipkin-slim
+    ports:
+      - "9411:9411"
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686"
+      - "4319:4318"
+      - "4320:4317"
+    environment:
+      - LOG_LEVEL=debug
+      - COLLECTOR_OTLP_ENABLED=true
