@@ -1,9 +1,7 @@
 package helpers
 
 import (
-	"bytes"
 	"net"
-	"net/http"
 	"net/rpc"
 	"testing"
 	"time"
@@ -17,12 +15,11 @@ import (
 )
 
 const (
-	push      string = "jobs.Push"
-	pushBatch string = "jobs.PushBatch"
-	pause     string = "jobs.Pause"
-	destroy   string = "jobs.Destroy"
-	resume    string = "jobs.Resume"
-	stat      string = "jobs.Stat"
+	push    string = "jobs.Push"
+	pause   string = "jobs.Pause"
+	destroy string = "jobs.Destroy"
+	resume  string = "jobs.Resume"
+	stat    string = "jobs.Stat"
 )
 
 func ResumePipes(address string, pipes ...string) func(t *testing.T) {
@@ -39,29 +36,6 @@ func ResumePipes(address string, pipes ...string) func(t *testing.T) {
 
 		er := &jobsProto.Empty{}
 		err = client.Call(resume, pipe, er)
-		require.NoError(t, err)
-	}
-}
-
-func PushToDisabledPipe(address, pipeline string) func(t *testing.T) {
-	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
-		require.NoError(t, err)
-		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-		req := &jobsProto.PushRequest{Job: &jobsProto.Job{
-			Job:     "some/php/namespace",
-			Id:      "1",
-			Payload: []byte(`{"hello":"world"}`),
-			Headers: nil,
-			Options: &jobsProto.Options{
-				Priority: 1,
-				Pipeline: pipeline,
-			},
-		}}
-
-		er := &jobsProto.Empty{}
-		err = client.Call(push, req, er)
 		require.NoError(t, err)
 	}
 }
@@ -104,28 +78,6 @@ func PushToPipeDelayed(address string, pipeline string, delay int64) func(t *tes
 	}
 }
 
-func PushToPipeBatch(address string, pipeline string, count int, autoAck bool) func(t *testing.T) {
-	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
-		assert.NoError(t, err)
-		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-		jobs := make([]*jobsProto.Job, count)
-
-		for i := 0; i < count; i++ {
-			jobs[i] = createDummyJob(pipeline, autoAck)
-		}
-
-		req := &jobsProto.PushBatchRequest{
-			Jobs: jobs,
-		}
-
-		er := &jobsProto.Empty{}
-		err = client.Call(pushBatch, req, er)
-		assert.NoError(t, err)
-	}
-}
-
 func createDummyJob(pipeline string, autoAck bool) *jobsProto.Job {
 	return &jobsProto.Job{
 		Job:     "some/php/namespace",
@@ -138,33 +90,6 @@ func createDummyJob(pipeline string, autoAck bool) *jobsProto.Job {
 			Pipeline: pipeline,
 			Topic:    pipeline,
 		},
-	}
-}
-
-func PushToPipeErr(pipeline string) func(t *testing.T) {
-	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", "127.0.0.1:6001")
-		require.NoError(t, err)
-		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-		req := &jobsProto.PushRequest{Job: &jobsProto.Job{
-			Job:     "some/php/namespace",
-			Id:      "1",
-			Payload: []byte(`{"hello":"world"}`),
-			Headers: map[string]*jobsProto.HeaderValue{"test": {Value: []string{"test2"}}},
-			Options: &jobsProto.Options{
-				Priority:  1,
-				Pipeline:  pipeline,
-				AutoAck:   true,
-				Topic:     pipeline,
-				Offset:    0,
-				Partition: 0,
-			},
-		}}
-
-		er := &jobsProto.Empty{}
-		err = client.Call(push, req, er)
-		assert.Error(t, err)
 	}
 }
 
@@ -208,46 +133,6 @@ func DestroyPipelines(address string, pipes ...string) func(t *testing.T) {
 			assert.NoError(t, err)
 			break
 		}
-	}
-}
-
-func EnableProxy(name string, t *testing.T) {
-	buf := new(bytes.Buffer)
-	buf.WriteString(`{"enabled":true}`)
-
-	resp, err := http.Post("http://127.0.0.1:8474/proxies/"+name, "application/json", buf) //nolint:noctx
-	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
-	if resp.Body != nil {
-		_ = resp.Body.Close()
-	}
-}
-
-func DisableProxy(name string, t *testing.T) {
-	buf := new(bytes.Buffer)
-	buf.WriteString(`{"enabled":false}`)
-
-	resp, err := http.Post("http://127.0.0.1:8474/proxies/"+name, "application/json", buf) //nolint:noctx
-	require.NoError(t, err)
-	require.Equal(t, 200, resp.StatusCode)
-	if resp.Body != nil {
-		_ = resp.Body.Close()
-	}
-}
-
-func DeleteProxy(name string, t *testing.T) {
-	client := &http.Client{}
-
-	req, err := http.NewRequest(http.MethodDelete, "http://127.0.0.1:8474/proxies/"+name, nil) //nolint:noctx
-	require.NoError(t, err)
-
-	resp, err := client.Do(req)
-	require.NoError(t, err)
-
-	require.NoError(t, err)
-	require.Equal(t, 204, resp.StatusCode)
-	if resp.Body != nil {
-		_ = resp.Body.Close()
 	}
 }
 
