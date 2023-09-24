@@ -12,9 +12,9 @@ server:
 amqp:
   addr: amqps://guest:guest@127.0.0.1:5677/
   tls:
-    root_ca: ../../../test-certs/rootCA.pem
-    key: ../../../test-certs/localhost+2-client-key.pem
-    cert: ../../../test-certs/localhost+2-client.pem
+    root_ca: test-certs/rootCA.pem
+    key: test-certs/localhost+2-client-key.pem
+    cert: test-certs/localhost+2-client.pem
     client_auth_type: 'require_and_verify_client_cert'
 
 logs:
