@@ -62,7 +62,6 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          mkdir test-certs
           sudo apt update
           sudo apt install -y libnss3-tools
           curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
