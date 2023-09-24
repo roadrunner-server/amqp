@@ -56,7 +56,7 @@ services:
       - LOG_LEVEL=debug
       - COLLECTOR_OTLP_ENABLED=true
     networks:
-      otel
+      otel:
 
 networks:
   amqp:
