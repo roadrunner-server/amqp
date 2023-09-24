@@ -43,7 +43,6 @@ linters: # All available linters list: <https://golangci-lint.run/usage/linters/
     - asciicheck # Simple linter to check that your code does not contain non-ASCII identifiers
     - bodyclose # Checks whether HTTP response body is closed successfully
     - dogsled # Checks assignments with too many blank identifiers (e.g. x, _, _, _, := f())
-    - dupl # Tool for code clone detection
     - errcheck # Errcheck is a program for checking for unchecked errors in go programs. These unchecked errors can be critical bugs in some cases
     - errorlint # find code that will cause problems with the error wrapping scheme introduced in Go 1.13
     - exhaustive # check exhaustiveness of enum switch statements

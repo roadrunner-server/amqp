@@ -1,4 +1,4 @@
-module github.com/roadrunner-server/amqp/v4
+module github.com/roadrunner-server/amqp/v4/amqpjobs
 
 go 1.21
 
@@ -10,7 +10,6 @@ require (
 	github.com/google/uuid v1.3.1
 	github.com/rabbitmq/amqp091-go v1.8.1
 	github.com/roadrunner-server/api/v4 v4.8.0
-	github.com/roadrunner-server/endure/v2 v2.4.2
 	github.com/roadrunner-server/errors v1.3.0
 	github.com/stretchr/testify v1.8.4
 	go.opentelemetry.io/contrib/propagators/jaeger v1.19.0
