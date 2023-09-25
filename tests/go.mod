@@ -8,7 +8,7 @@ require (
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.3.1
 	github.com/rabbitmq/amqp091-go v1.8.1
-	github.com/roadrunner-server/amqp/v4 v4.8.5
+	github.com/roadrunner-server/amqp/v4 v4.9.0
 	github.com/roadrunner-server/api/v4 v4.8.0
 	github.com/roadrunner-server/config/v4 v4.4.4
 	github.com/roadrunner-server/endure/v2 v2.4.2
