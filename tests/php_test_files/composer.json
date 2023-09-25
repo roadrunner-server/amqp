@@ -7,7 +7,6 @@
     "nyholm/psr7": "^1.5",
     "spiral/roadrunner-http": "^3.0",
     "spiral/roadrunner-worker": "^3.0",
-    "temporal/sdk": "^2.7.0-dev",
     "spiral/tokenizer": ">=2.7",
     "spiral/roadrunner-metrics": "^3.0",
     "spiral/roadrunner-grpc": "^3.0",
@@ -23,11 +22,6 @@
     "php-http/message-factory": "^1.1",
     "spiral/roadrunner-kv": "^4.0",
     "spiral/roadrunner-services": "^2.0"
-  },
-  "autoload": {
-    "psr-4": {
-      "": "src"
-    }
   },
   "name": "test/test",
   "description": "test",
