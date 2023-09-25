@@ -1,4 +1,4 @@
-name: amqp
+name: amqp_durability
 
 on:
   push:
@@ -11,8 +11,8 @@ on:
       - stable
 
 jobs:
-  amqp_test:
-    name: RabbitMQ plugin (Go ${{ matrix.go }}, PHP ${{ matrix.php }}, OS ${{matrix.os}})
+  amqp_durability_test:
+    name: RabbitMQ plugin durability (Go ${{ matrix.go }}, PHP ${{ matrix.php }}, OS ${{matrix.os}})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
@@ -62,22 +62,11 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          sudo apt update
-          sudo apt install -y libnss3-tools
-          curl -JLO "https://dl.filippo.io/mkcert/latest?for=linux/amd64"
-          chmod +x mkcert-v*-linux-amd64
-          sudo cp mkcert-v*-linux-amd64 /usr/local/bin/mkcert
-          mkcert -install
-          mkcert localhost 127.0.0.1 ::1
-          mkcert -client localhost 127.0.0.1 ::1 
-          cp -r localhost+2-client-key.pem localhost+2-client.pem localhost+2-key.pem localhost+2.pem test-certs/
-          cp -r $(mkcert -CAROOT)/rootCA.pem test-certs/
-
           docker compose -f env/docker-compose-amqp.yaml up -d
           sleep 30
           
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/amqp.out -covermode=atomic ./...
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/amqp.out -covermode=atomic jobs_amqp_durability_test.go
           docker compose -f env/docker-compose-amqp.yaml down
 
       - name: Archive code coverage results
@@ -90,7 +79,7 @@ jobs:
     name: Upload codecov
     runs-on: ubuntu-latest
     needs:
-      - amqp_test
+      - amqp_durability_test
 
     timeout-minutes: 60
     steps:

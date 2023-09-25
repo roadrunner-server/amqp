@@ -77,7 +77,7 @@ jobs:
           sleep 30
           
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/amqp.out -covermode=atomic ./...
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/amqp.out -covermode=atomic jobs_amqp_test.go
           docker compose -f env/docker-compose-amqp.yaml down
 
       - name: Archive code coverage results
