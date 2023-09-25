@@ -5,6 +5,7 @@ go 1.21
 toolchain go1.21.1
 
 require (
+	github.com/Shopify/toxiproxy/v2 v2.6.0
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.3.1
 	github.com/rabbitmq/amqp091-go v1.8.1
