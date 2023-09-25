@@ -390,7 +390,7 @@ func TestAMQPDeclareHeaders(t *testing.T) {
 
 	headers := `{"x-queue-type": "quorum"}`
 
-	t.Run("DeclareAMQPPipeline", declareAMQPPipe("test-6", "test-6", "test-6", headers, "false", "true"))
+	t.Run("DeclareAMQPPipeline", helpers.DeclareAMQPPipe("test-6", "test-6", "test-6", headers, "false", "true"))
 	t.Run("ConsumeAMQPPipeline", helpers.ResumePipes("127.0.0.1:6001", "test-6"))
 	t.Run("PushAMQPPipeline", helpers.PushToPipe("test-6", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second)
@@ -1176,7 +1176,7 @@ func TestAMQPReset(t *testing.T) {
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
 	t.Run("PushToPipeline", helpers.PushToPipe("test-2", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second)
-	reset(t)
+	helpers.Reset(t)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
 	t.Run("PushToPipeline", helpers.PushToPipe("test-2", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second)
@@ -1263,7 +1263,7 @@ func TestAMQPDeclare(t *testing.T) {
 
 	time.Sleep(time.Second * 3)
 
-	t.Run("DeclareAMQPPipeline", declareAMQPPipe("test-3", "test-3", "test-3", "", "true", "false"))
+	t.Run("DeclareAMQPPipeline", helpers.DeclareAMQPPipe("test-3", "test-3", "test-3", "", "true", "false"))
 	t.Run("ConsumeAMQPPipeline", helpers.ResumePipes("127.0.0.1:6001", "test-3"))
 	t.Run("PushAMQPPipeline", helpers.PushToPipe("test-3", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second)
@@ -1351,7 +1351,7 @@ func TestAMQPDeclareDurable(t *testing.T) {
 
 	time.Sleep(time.Second * 3)
 
-	t.Run("DeclareAMQPPipeline", declareAMQPPipe("test-8", "test-8", "test-8", "", "true", "true"))
+	t.Run("DeclareAMQPPipeline", helpers.DeclareAMQPPipe("test-8", "test-8", "test-8", "", "true", "true"))
 	t.Run("ConsumeAMQPPipeline", helpers.ResumePipes("127.0.0.1:6001", "test-8"))
 	t.Run("PushAMQPPipeline", helpers.PushToPipe("test-8", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second)
@@ -1439,7 +1439,7 @@ func TestAMQPJobsError(t *testing.T) {
 
 	time.Sleep(time.Second * 3)
 
-	t.Run("DeclareAMQPPipeline", declareAMQPPipe("test-4", "test-4", "test-4", "", "true", "false"))
+	t.Run("DeclareAMQPPipeline", helpers.DeclareAMQPPipe("test-4", "test-4", "test-4", "", "true", "false"))
 	t.Run("ConsumeAMQPPipeline", helpers.ResumePipes("127.0.0.1:6001", "test-4"))
 	t.Run("PushAMQPPipeline", helpers.PushToPipe("test-4", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second * 25)
@@ -1559,7 +1559,7 @@ func TestAMQPStats(t *testing.T) {
 
 	time.Sleep(time.Second * 3)
 
-	t.Run("DeclareAMQPPipeline", declareAMQPPipe("test-5", "test-5", "test-5", "", "true", "false"))
+	t.Run("DeclareAMQPPipeline", helpers.DeclareAMQPPipe("test-5", "test-5", "test-5", "", "true", "false"))
 	t.Run("ConsumeAMQPPipeline", helpers.ResumePipes("127.0.0.1:6001", "test-5"))
 	t.Run("PushAMQPPipeline", helpers.PushToPipe("test-5", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second * 2)
@@ -2132,47 +2132,4 @@ func TestAMQPOTEL(t *testing.T) {
 	t.Cleanup(func() {
 		_ = resp.Body.Close()
 	})
-}
-
-func declareAMQPPipe(queue, routingKey, name, headers, exclusive, durable string) func(t *testing.T) {
-	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", "127.0.0.1:6001")
-		assert.NoError(t, err)
-		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-		pipe := &jobsProto.DeclareRequest{Pipeline: map[string]string{
-			"driver":               "amqp",
-			"name":                 name,
-			"routing_key":          routingKey,
-			"queue":                queue,
-			"exchange_type":        "direct",
-			"exchange":             "amqp.default",
-			"prefetch":             "100",
-			"delete_queue_on_stop": "true",
-			"priority":             "3",
-			"exclusive":            exclusive,
-			"durable":              durable,
-			"multiple_ack":         "true",
-			"requeue_on_fail":      "true",
-		}}
-
-		if headers != "" {
-			pipe.Pipeline["queue_headers"] = headers
-		}
-
-		er := &jobsProto.Empty{}
-		err = client.Call("jobs.Declare", pipe, er)
-		assert.NoError(t, err)
-	}
-}
-
-func reset(t *testing.T) {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
-	assert.NoError(t, err)
-	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	var ret bool
-	err = c.Call("resetter.Reset", "jobs", &ret)
-	assert.NoError(t, err)
-	require.True(t, ret)
 }

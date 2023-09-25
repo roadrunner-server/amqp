@@ -1,7 +1,9 @@
 package helpers
 
 import (
+	"bytes"
 	"net"
+	"net/http"
 	"net/rpc"
 	"testing"
 	"time"
@@ -136,6 +138,33 @@ func DestroyPipelines(address string, pipes ...string) func(t *testing.T) {
 	}
 }
 
+func PushToPipeErr(pipeline string) func(t *testing.T) {
+	return func(t *testing.T) {
+		conn, err := net.Dial("tcp", "127.0.0.1:6001")
+		require.NoError(t, err)
+		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+		req := &jobsProto.PushRequest{Job: &jobsProto.Job{
+			Job:     "some/php/namespace",
+			Id:      "1",
+			Payload: []byte(`{"hello":"world"}`),
+			Headers: map[string]*jobsProto.HeaderValue{"test": {Value: []string{"test2"}}},
+			Options: &jobsProto.Options{
+				Priority:  1,
+				Pipeline:  pipeline,
+				AutoAck:   true,
+				Topic:     pipeline,
+				Offset:    0,
+				Partition: 0,
+			},
+		}}
+
+		er := &jobsProto.Empty{}
+		err = client.Call(push, req, er)
+		assert.Error(t, err)
+	}
+}
+
 func Stats(address string, state *jobState.State) func(t *testing.T) {
 	return func(t *testing.T) {
 		conn, err := net.Dial("tcp", address)
@@ -158,4 +187,87 @@ func Stats(address string, state *jobState.State) func(t *testing.T) {
 		state.Ready = st.Stats[0].Ready
 		state.Priority = st.Stats[0].Priority
 	}
+}
+
+func EnableProxy(name string, t *testing.T) {
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"enabled":true}`)
+
+	resp, err := http.Post("http://127.0.0.1:8474/proxies/"+name, "application/json", buf) //nolint:noctx
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	if resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+}
+
+func DisableProxy(name string, t *testing.T) {
+	buf := new(bytes.Buffer)
+	buf.WriteString(`{"enabled":false}`)
+
+	resp, err := http.Post("http://127.0.0.1:8474/proxies/"+name, "application/json", buf) //nolint:noctx
+	require.NoError(t, err)
+	require.Equal(t, 200, resp.StatusCode)
+	if resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+}
+
+func DeleteProxy(name string, t *testing.T) {
+	client := &http.Client{}
+
+	req, err := http.NewRequest(http.MethodDelete, "http://127.0.0.1:8474/proxies/"+name, nil) //nolint:noctx
+	require.NoError(t, err)
+
+	resp, err := client.Do(req)
+	require.NoError(t, err)
+
+	require.NoError(t, err)
+	require.Equal(t, 204, resp.StatusCode)
+	if resp.Body != nil {
+		_ = resp.Body.Close()
+	}
+}
+
+func DeclareAMQPPipe(queue, routingKey, name, headers, exclusive, durable string) func(t *testing.T) {
+	return func(t *testing.T) {
+		conn, err := net.Dial("tcp", "127.0.0.1:6001")
+		assert.NoError(t, err)
+		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+		pipe := &jobsProto.DeclareRequest{Pipeline: map[string]string{
+			"driver":               "amqp",
+			"name":                 name,
+			"routing_key":          routingKey,
+			"queue":                queue,
+			"exchange_type":        "direct",
+			"exchange":             "amqp.default",
+			"prefetch":             "100",
+			"delete_queue_on_stop": "true",
+			"priority":             "3",
+			"exclusive":            exclusive,
+			"durable":              durable,
+			"multiple_ack":         "true",
+			"requeue_on_fail":      "true",
+		}}
+
+		if headers != "" {
+			pipe.Pipeline["queue_headers"] = headers
+		}
+
+		er := &jobsProto.Empty{}
+		err = client.Call("jobs.Declare", pipe, er)
+		assert.NoError(t, err)
+	}
+}
+
+func Reset(t *testing.T) {
+	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	assert.NoError(t, err)
+	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+	var ret bool
+	err = c.Call("resetter.Reset", "jobs", &ret)
+	assert.NoError(t, err)
+	require.True(t, ret)
 }
