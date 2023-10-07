@@ -34,12 +34,12 @@ var _ jobs.Driver = (*Driver)(nil)
 type Configurer interface {
 	// UnmarshalKey takes a single key and unmarshal it into a Struct.
 	UnmarshalKey(name string, out any) error
-	// Has checks if config section exists.
+	// Has checks if a config section exists.
 	Has(name string) bool
 }
 
 type Driver struct {
-	mu         sync.Mutex
+	mu         sync.RWMutex
 	log        *zap.Logger
 	pq         jobs.Queue
 	pipeline   atomic.Pointer[jobs.Pipeline]
@@ -441,8 +441,8 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 		// if there is no queue, check the connection instead
 		if d.queue == "" {
 			// d.conn should be protected (redial)
-			d.mu.Lock()
-			defer d.mu.Unlock()
+			d.mu.RLock()
+			defer d.mu.RUnlock()
 
 			if !d.conn.IsClosed() {
 				return &jobs.State{
@@ -454,7 +454,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 				}, nil
 			}
 
-			return nil, errors.Str("empty queue name, add queue to the AMQP configuration")
+			return nil, errors.Str("connection is closed, can't get the state")
 		}
 
 		// verify or declare a queue

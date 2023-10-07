@@ -37,6 +37,7 @@ jobs:
         delete_queue_on_stop: true
         exchange_type: fanout
         routing_key: ''
+
     test-fanout-2:
       driver: amqp
       config:

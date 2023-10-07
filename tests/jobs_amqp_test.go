@@ -53,11 +53,11 @@ func TestAMQPFanoutQueueName(t *testing.T) {
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
 	err := cont.RegisterAll(
+		l,
 		cfg,
 		&server.Plugin{},
 		&rpcPlugin.Plugin{},
 		&jobs.Plugin{},
-		l,
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&amqpDriver.Plugin{},
