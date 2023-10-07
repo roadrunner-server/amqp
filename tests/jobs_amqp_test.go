@@ -591,11 +591,11 @@ func TestAMQP20Pipelines(t *testing.T) {
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
 	err := cont.RegisterAll(
+		l,
 		cfg,
 		&server.Plugin{},
 		&rpcPlugin.Plugin{},
 		&jobs.Plugin{},
-		l,
 		&resetter.Plugin{},
 		&informer.Plugin{},
 		&amqpDriver.Plugin{},
@@ -679,7 +679,7 @@ func TestAMQP20Pipelines(t *testing.T) {
 	stopCh <- struct{}{}
 	wg.Wait()
 
-	assert.Equal(t, 10, oLogger.FilterMessageSnippet("exited from jobs processor").Len())
+	assert.Equal(t, 10, oLogger.FilterMessageSnippet("exited from jobs pipeline processor").Len())
 	assert.Equal(t, 20, oLogger.FilterMessageSnippet("initializing driver").Len())
 	assert.Equal(t, 20, oLogger.FilterMessageSnippet("driver ready").Len())
 	assert.Equal(t, 20, oLogger.FilterMessageSnippet("pipeline was started").Len())

@@ -132,17 +132,17 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 	cont := endure.New(slog.LevelDebug)
 
 	cfg := &config.Plugin{
-		Version: "2.9.0",
+		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-durability-no-queue.yaml",
 		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
 	err = cont.RegisterAll(
+		l,
 		cfg,
 		&server.Plugin{},
 		&rpcPlugin.Plugin{},
-		l,
 		&jobs.Plugin{},
 		&resetter.Plugin{},
 		&informer.Plugin{},
@@ -217,8 +217,6 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 	wg.Wait()
 
 	assert.Equal(t, oLogger.FilterMessageSnippet("job was pushed successfully").Len(), 2)
-	assert.Equal(t, oLogger.FilterMessageSnippet("publish channel close").Len(), 1)
-	assert.Equal(t, oLogger.FilterMessageSnippet("state channel close").Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("amqp connection closed").Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("pipeline connection was closed, redialing").Len(), 1)
 

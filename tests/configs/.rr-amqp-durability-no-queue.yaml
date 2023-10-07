@@ -17,7 +17,6 @@ logs:
   mode: development
 
 jobs:
-  consume: [ ] # not consuming any queues
   pipelines:
     push_pipeline:
       driver: amqp
