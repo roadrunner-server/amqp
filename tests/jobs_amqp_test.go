@@ -1703,18 +1703,18 @@ func TestAMQPSlow(t *testing.T) {
 	cont := endure.New(slog.LevelDebug, endure.GracefulShutdownTimeout(time.Minute*5))
 
 	cfg := &config.Plugin{
-		Version: "2.9.2",
+		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-slow.yaml",
 		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
 	err := cont.RegisterAll(
+		l,
 		cfg,
 		&server.Plugin{},
 		&rpcPlugin.Plugin{},
 		&jobs.Plugin{},
-		l,
 		&resetter.Plugin{},
 		&metrics.Plugin{},
 		&informer.Plugin{},
@@ -1781,7 +1781,7 @@ func TestAMQPSlow(t *testing.T) {
 
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len(), 1)
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet(`number of listeners`).Len(), 1)
-	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("consume channel close").Len(), 1)
+	assert.Equal(t, oLogger.FilterMessageSnippet("consume channel close").Len(), 0)
 	assert.GreaterOrEqual(
 		t,
 		oLogger.FilterMessageSnippet("rabbitmq dial was succeed. trying to redeclare queues and subscribers").Len(),
