@@ -509,7 +509,6 @@ github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da h1:oI5xCqsCo564l
 github.com/golang/snappy v0.0.4 h1:yAGX7huGHXlcLOEtBnF4w7FQwA26wojNCwOYAEhLjQM=
 github.com/google/btree v1.0.0 h1:0udJVsspx3VBr5FwtLhQQtuAsVc79tTq0ocGIPAU6qo=
 github.com/google/flatbuffers v2.0.8+incompatible h1:ivUb1cGomAB101ZM1T0nOiWz9pSrTMoa9+EiY7igmkM=
-github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 github.com/google/martian v2.1.0+incompatible h1:/CP5g8u/VJHijgedC/Legn3BAbAaWPgecwXBIDzw5no=
 github.com/google/martian/v3 v3.3.2 h1:IqNFLAmvJOgVlpdEBiQbDc2EwKW77amAycfTuWKdfvw=
 github.com/google/pprof v0.0.0-20210720184732-4bb14d4b1be1 h1:K6RDEckDVWvDI9JAJYCmNdQXq6neHJOYx3V6jnqNEec=
@@ -708,6 +707,8 @@ github.com/roadrunner-server/redis/v4 v4.2.3 h1:bZjl1lPVtWwn9UaWCP5+fihHjHFeo+wQ
 github.com/roadrunner-server/redis/v4 v4.2.3/go.mod h1:TvBT3X62/A9KO77RBVguJZpUsYheZimtxRrtRD3dORM=
 github.com/roadrunner-server/send/v4 v4.2.4 h1:oj9ZlDbAP9WKPt/zqHqEK6E7hBtN97Zyz1G5DNfBicQ=
 github.com/roadrunner-server/send/v4 v4.2.4/go.mod h1:VEUtrIFpZu7EvXSt1iRnWRKqUBpgfh0zukzHXhraA7k=
+github.com/roadrunner-server/server/v4 v4.4.5 h1:UwpPG++IC9jS2gulpkpozD5dni7dFnWUCJ2wOWEjuLY=
+github.com/roadrunner-server/server/v4 v4.4.5/go.mod h1:vKAv+Qy6tIqdjsGijwJy6M9nrKIsTkY9+xqaUNZ9nWo=
 github.com/roadrunner-server/service/v4 v4.4.2 h1:aaSDs1/Thmp7rKXJFbCOHJ37W5KPbOEtIaOZdA3V84c=
 github.com/roadrunner-server/service/v4 v4.4.2/go.mod h1:wRyxltXOhrwfK+pWaVQu/qLiy1SJw0dc8jMNyeGlqO0=
 github.com/roadrunner-server/sqs/v4 v4.5.2 h1:+13QlvDVKbsLScn11heP17fSfZXkKFGQHKPtuK4VSfE=
@@ -725,6 +726,8 @@ github.com/rs/xid v1.5.0 h1:mKX4bl4iPYJtEIxp6CYiUuLQ/8DYMoz0PUdtGgMFRVc=
 github.com/rs/xid v1.5.0/go.mod h1:trrq9SKmegXys3aeAKXMUTdJsYXVwGY3RLcfgqegfbg=
 github.com/rs/zerolog v1.30.0 h1:SymVODrcRsaRaSInD9yQtKbtWqwsfoPcRff/oRXLj4c=
 github.com/rs/zerolog v1.30.0/go.mod h1:/tk+P47gFdPXq4QYjvCmT5/Gsug2nagsFWBWhAiSi1w=
+github.com/rs/zerolog v1.31.0 h1:FcTR3NnLWW+NnTwwhFWiJSZr4ECLpqCm6QsEnyvbV4A=
+github.com/rs/zerolog v1.31.0/go.mod h1:/7mN4D5sKwJLZQ2b/znpjC3/GQWY/xaDXUM0kKWRHss=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/ruudk/golang-pdf417 v0.0.0-20201230142125-a7e3863a1245 h1:K1Xf3bKttbF+koVGaX5xngRIZ5bVjbmPnaxE/dR08uY=
@@ -753,6 +756,8 @@ github.com/uber-go/tally/v4 v4.1.7 h1:YiKvvMKCCXlCKXI0i1hVk+xda8YxdIpjeFXohpvn8Z
 github.com/uber-go/tally/v4 v4.1.7/go.mod h1:pPR56rjthjtLB8xQlEx2I1VwAwRGCh/i4xMUcmG+6z4=
 github.com/urfave/cli/v2 v2.23.0 h1:pkly7gKIeYv3olPAeNajNpLjeJrmTPYCoZWaV+2VfvE=
 github.com/urfave/cli/v2 v2.23.0/go.mod h1:1CNUng3PtjQMtRzJO4FMXBQvkGtuYRxxiR9xMa7jMwI=
+github.com/urfave/cli/v2 v2.25.7 h1:VAzn5oq403l5pHjc4OhD54+XGO9cdKVL/7lDjF+iKUs=
+github.com/urfave/cli/v2 v2.25.7/go.mod h1:8qnjx1vcq5s2/wpsqoZFndg2CE5tNFyrTvS6SinrnYQ=
 github.com/valyala/bytebufferpool v1.0.0 h1:GqA5TC/0021Y/b9FG4Oi9Mr3q7XYx6KllzawFIhcdPw=
 github.com/valyala/bytebufferpool v1.0.0/go.mod h1:6bBcMArwyJ5K/AmCkWv1jt77kVWyCJ6HpOuEn7z0Csc=
 github.com/valyala/fasthttp v1.50.0 h1:H7fweIlBm0rXLs2q0XbalvJ6r0CUPFWK3/bB4N13e9M=
