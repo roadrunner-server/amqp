@@ -11,7 +11,7 @@ require (
 	github.com/rabbitmq/amqp091-go v1.9.0
 	github.com/roadrunner-server/amqp/v4 v4.9.4
 	github.com/roadrunner-server/api/v4 v4.9.0
-	github.com/roadrunner-server/config/v4 v4.5.0
+	github.com/roadrunner-server/config/v4 v4.6.0
 	github.com/roadrunner-server/endure/v2 v2.4.3
 	github.com/roadrunner-server/goridge/v3 v3.8.1
 	github.com/roadrunner-server/informer/v4 v4.3.7
