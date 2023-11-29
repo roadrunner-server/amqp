@@ -241,7 +241,7 @@ func pack(id string, j *Item) (amqp.Table, error) {
 // unpack restores jobs.Options
 func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	item := &Item{
-		headers: convHeaders(deliv.Headers),
+		headers: convHeaders(deliv.Headers, d.log),
 		Payload: deliv.Body,
 		Options: &Options{
 			Pipeline:    (*d.pipeline.Load()).Name(),
