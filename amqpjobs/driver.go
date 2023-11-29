@@ -642,7 +642,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			// TODO declare separate method for this if condition
 			// TODO dlx cache channel??
 			delayMs := int64(msg.Options.DelayDuration().Seconds() * 1000)
-			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, d.exchangeName, d.queue)
+			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, d.exchangeName, d.queueOrRk())
 			_, err = pch.QueueDeclare(tmpQ, true, false, false, false, amqp.Table{
 				dlx:           d.exchangeName,
 				dlxRoutingKey: rk,
@@ -735,6 +735,14 @@ func (d *Driver) setRoutingKey(headers map[string][]string) string {
 		if len(val) == 1 && val[0] != "" {
 			return val[0]
 		}
+	}
+
+	return d.routingKey
+}
+
+func (d *Driver) queueOrRk() string {
+	if d.queue != "" {
+		return d.queue
 	}
 
 	return d.routingKey

@@ -29,6 +29,7 @@ func TestConv(t *testing.T) {
 	table["bt"] = true
 
 	table["bytes"] = []byte("fooooooobbbbbb")
+	table["decimal"] = amqp.Decimal{Scale: 4, Value: 12345}
 
 	table["foo"] = float32(2.3)
 	table["foo2"] = 2.3
@@ -51,6 +52,7 @@ func TestConv(t *testing.T) {
 	require.Equal(t, ret["i"], []string{"1"})
 	require.Equal(t, ret["g"], []string{"1"})
 	require.Equal(t, ret["k"], []string{"1"})
+	require.Equal(t, ret["decimal"], []string{"1.2345"})
 
 	require.Equal(t, ret["strsl"], []string{"a", "b", "c"})
 	require.Equal(t, ret["str"], []string{"fooooo"})

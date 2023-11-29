@@ -1,7 +1,10 @@
 package amqpjobs
 
 import (
+	"fmt"
+	"math"
 	"strconv"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.uber.org/zap"
@@ -61,8 +64,24 @@ func convHeadersAnyType(ret *map[string][]string, k string, header any, log *zap
 			// we need to recursively call this function to handle nested slices of primitives
 			convHeadersAnyType(ret, k, v, log)
 		}
+	case amqp.Table:
+		for kk := range t {
+			// mut ret
+			convHeadersAnyType(ret, kk, t[kk], log)
+		}
+	case amqp.Decimal:
+		(*ret)[k] = append((*ret)[k], formatDecimal(t))
+	case time.Time:
+		(*ret)[k] = append((*ret)[k], t.Format(time.RFC3339))
 	default:
 		// we don't know what this is, so we'll just ignore it
 		log.Warn("unknown header type", zap.String("key", k), zap.Any("value", t))
 	}
+}
+
+func formatDecimal(d amqp.Decimal) string {
+	// Calculate the divisor based on the scale.
+	divisor := math.Pow10(int(d.Scale))
+	// Divide the value by the divisor and format it as a string.
+	return fmt.Sprintf("%.*f", d.Scale, float64(d.Value)/divisor)
 }
