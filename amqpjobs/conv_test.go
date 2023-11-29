@@ -5,6 +5,7 @@ import (
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/require"
+	"go.uber.org/zap"
 )
 
 func TestConv(t *testing.T) {
@@ -32,7 +33,9 @@ func TestConv(t *testing.T) {
 	table["foo"] = float32(2.3)
 	table["foo2"] = 2.3
 
-	ret := convHeaders(table)
+	log, err := zap.NewDevelopment()
+	require.NoError(t, err)
+	ret := convHeaders(table, log)
 
 	require.Equal(t, ret["foo"], []string{"2.30000"})
 	require.Equal(t, ret["foo2"], []string{"2.30000"})

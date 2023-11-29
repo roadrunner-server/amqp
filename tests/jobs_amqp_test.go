@@ -693,7 +693,7 @@ func TestAMQPInit(t *testing.T) {
 	cont := endure.New(slog.LevelDebug)
 
 	cfg := &config.Plugin{
-		Version: "2.9.0",
+		Version: "2023.3.7",
 		Path:    "configs/.rr-amqp-init.yaml",
 		Prefix:  "rr",
 	}
