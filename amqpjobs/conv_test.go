@@ -33,7 +33,8 @@ func TestConv(t *testing.T) {
 	table["foo"] = float32(2.3)
 	table["foo2"] = 2.3
 
-	log, _ := zap.NewDevelopment()
+	log, err := zap.NewDevelopment()
+	require.NoError(t, err)
 	ret := convHeaders(table, log)
 
 	require.Equal(t, ret["foo"], []string{"2.30000"})
