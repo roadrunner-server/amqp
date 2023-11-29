@@ -37,7 +37,7 @@ func TestDurabilityAMQP(t *testing.T) {
 	cont := endure.New(slog.LevelDebug)
 
 	cfg := &config.Plugin{
-		Version: "2.9.0",
+		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-durability-redial.yaml",
 		Prefix:  "rr",
 	}
