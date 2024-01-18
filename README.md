@@ -1,4 +1,4 @@
-# Docs: [link](https://roadrunner.dev/docs/plugins-jobs/2.x/en)
+# Docs: [link](https://docs.roadrunner.dev/queues-and-jobs/overview-queues)
 
 ### For developers:
 - #### How to run tests: [link](.github/workflows/linux.yml): `Run golang tests with coverage` task.
