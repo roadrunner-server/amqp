@@ -2,7 +2,7 @@ module tests
 
 go 1.21
 
-toolchain go1.22rc1
+toolchain go1.21.5
 
 require (
 	github.com/Shopify/toxiproxy/v2 v2.7.0
@@ -25,6 +25,8 @@ require (
 	github.com/stretchr/testify v1.8.4
 	go.uber.org/zap v1.26.0
 )
+
+exclude go.temporal.io/api v1.26.1
 
 replace github.com/roadrunner-server/amqp/v4 => ../
 
@@ -95,7 +97,7 @@ require (
 	go.opentelemetry.io/proto/otlp v1.1.0 // indirect
 	go.temporal.io/api v1.26.0 // indirect
 	go.temporal.io/sdk v1.25.1 // indirect
-	go.temporal.io/sdk/contrib/opentelemetry v0.3.0 // indirect
+	go.temporal.io/sdk/contrib/opentelemetry v0.4.0 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240112132812-db7319d0e0e3 // indirect
