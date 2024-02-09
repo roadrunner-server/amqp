@@ -323,7 +323,7 @@ func (d *Driver) redial(rm *redialMsg) {
 		return
 	}
 
-	d.log.Info("connection was successfully restored", zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t), zap.Duration("elapsed", time.Since(t)))
+	d.log.Info("connection was successfully restored", zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t), zap.Int("elapsed", time.Since(start).Milliseconds()))
 
 	// restart redialer
 	d.redialer()
