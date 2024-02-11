@@ -421,7 +421,7 @@ func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 	d.listener(deliv)
 
 	atomic.StoreUint32(&d.listeners, 1)
-	d.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int("elapsed", time.Since(start).Milliseconds()))
+	d.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
 	return nil
 }
 
@@ -526,7 +526,7 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 		zap.String("driver", pipe.Driver()),
 		zap.String("pipeline", pipe.Name()),
 		zap.Time("start", start),
-		zap.Int("elapsed", time.Since(start).Milliseconds()),
+		zap.Int64("elapsed", time.Since(start).Milliseconds()),
 	)
 
 	return nil
@@ -595,7 +595,7 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 		zap.String("driver", pipe.Driver()),
 		zap.String("pipeline", pipe.Name()),
 		zap.Time("start", start),
-		zap.Int("elapsed", time.Since(start).Milliseconds()),
+		zap.Int64("elapsed", time.Since(start).Milliseconds()),
 	)
 
 	return nil
@@ -611,7 +611,7 @@ func (d *Driver) Stop(ctx context.Context) error {
 	d.stopCh <- struct{}{}
 
 	pipe := *d.pipeline.Load()
-	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int("elapsed", time.Since(start).Milliseconds()))
+	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
 	close(d.redialCh)
 	return nil
 }
