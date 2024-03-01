@@ -7,20 +7,20 @@ require (
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.9.0
-	github.com/roadrunner-server/amqp/v4 v4.9.13
+	github.com/roadrunner-server/amqp/v4 v4.9.14
 	github.com/roadrunner-server/api/v4 v4.11.1
-	github.com/roadrunner-server/config/v4 v4.6.8
+	github.com/roadrunner-server/config/v4 v4.6.9
 	github.com/roadrunner-server/endure/v2 v2.4.3
 	github.com/roadrunner-server/goridge/v3 v3.8.1
-	github.com/roadrunner-server/informer/v4 v4.3.15
-	github.com/roadrunner-server/jobs/v4 v4.7.14
-	github.com/roadrunner-server/logger/v4 v4.2.15
-	github.com/roadrunner-server/metrics/v4 v4.1.17
-	github.com/roadrunner-server/otel/v4 v4.3.14
-	github.com/roadrunner-server/resetter/v4 v4.1.1
-	github.com/roadrunner-server/rpc/v4 v4.2.16
-	github.com/roadrunner-server/server/v4 v4.5.8
-	github.com/stretchr/testify v1.8.4
+	github.com/roadrunner-server/informer/v4 v4.3.16
+	github.com/roadrunner-server/jobs/v4 v4.7.15
+	github.com/roadrunner-server/logger/v4 v4.2.16
+	github.com/roadrunner-server/metrics/v4 v4.1.18
+	github.com/roadrunner-server/otel/v4 v4.3.15
+	github.com/roadrunner-server/resetter/v4 v4.1.2
+	github.com/roadrunner-server/rpc/v4 v4.2.17
+	github.com/roadrunner-server/server/v4 v4.5.9
+	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 )
 
