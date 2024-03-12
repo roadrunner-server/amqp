@@ -1,6 +1,6 @@
 module github.com/roadrunner-server/amqp/v4
 
-go 1.22.0
+go 1.22.1
 
 require (
 	github.com/cenkalti/backoff/v4 v4.2.1
@@ -16,7 +16,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.24.0
 	go.opentelemetry.io/otel/trace v1.24.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/sys v0.17.0
+	golang.org/x/sys v0.18.0
 )
 
 exclude (
