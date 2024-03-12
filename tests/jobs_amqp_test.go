@@ -123,7 +123,7 @@ func TestAMQPFanoutQueueName(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was processed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPHeaders(t *testing.T) {
@@ -206,7 +206,7 @@ func TestAMQPHeaders(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPHeadersXRoutingKey(t *testing.T) {
@@ -316,7 +316,7 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPDeclareHeaders(t *testing.T) {
@@ -406,7 +406,7 @@ func TestAMQPDeclareHeaders(t *testing.T) {
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job was processed successfully").Len())
-	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPInitTLS(t *testing.T) {
@@ -490,7 +490,7 @@ func TestAMQPInitTLS(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was processed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPRemoveAllFromPQ(t *testing.T) {
@@ -577,7 +577,7 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 200, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	assert.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	assert.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQP20Pipelines(t *testing.T) {
@@ -686,7 +686,7 @@ func TestAMQP20Pipelines(t *testing.T) {
 	assert.Equal(t, 20, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 20, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 20, oLogger.FilterMessageSnippet("job processing was started").Len())
-	assert.Equal(t, 20, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	assert.Equal(t, 20, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPBug1792(t *testing.T) {
@@ -769,7 +769,7 @@ func TestAMQPBug1792(t *testing.T) {
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	assert.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	assert.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPInit(t *testing.T) {
@@ -852,7 +852,7 @@ func TestAMQPInit(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPInitV27(t *testing.T) {
@@ -935,7 +935,7 @@ func TestAMQPInitV27(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPRoutingQueue(t *testing.T) {
@@ -1019,7 +1019,7 @@ func TestAMQPRoutingQueue(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPInitV27RR27(t *testing.T) {
@@ -1102,7 +1102,7 @@ func TestAMQPInitV27RR27(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPInitV27RR27Durable(t *testing.T) {
@@ -1185,7 +1185,7 @@ func TestAMQPInitV27RR27Durable(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPReset(t *testing.T) {
@@ -1274,7 +1274,7 @@ func TestAMQPReset(t *testing.T) {
 	require.Equal(t, 4, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 4, oLogger.FilterMessageSnippet("job processing was started").Len())
 	require.Equal(t, 4, oLogger.FilterMessageSnippet("job was processed successfully").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPDeclare(t *testing.T) {
@@ -1362,7 +1362,7 @@ func TestAMQPDeclare(t *testing.T) {
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was processed successfully").Len())
-	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPDeclareDurable(t *testing.T) {
@@ -1450,7 +1450,7 @@ func TestAMQPDeclareDurable(t *testing.T) {
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was processed successfully").Len())
-	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPJobsError(t *testing.T) {
@@ -1539,7 +1539,7 @@ func TestAMQPJobsError(t *testing.T) {
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was resumed").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	require.Equal(t, 3, oLogger.FilterMessageSnippet("jobs protocol error").Len())
-	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPNoGlobalSection(t *testing.T) {
@@ -1693,7 +1693,7 @@ func TestAMQPStats(t *testing.T) {
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was paused").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was resumed").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPBadResp(t *testing.T) {
@@ -1777,7 +1777,7 @@ func TestAMQPBadResp(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("response handler error").Len())
-	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 // redialer should be restarted
@@ -1862,12 +1862,12 @@ func TestAMQPSlow(t *testing.T) {
 	stopCh <- struct{}{}
 	wg.Wait()
 
-	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len(), 1)
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len(), 1)
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet(`number of listeners`).Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("consume channel close").Len(), 0)
 	assert.GreaterOrEqual(
 		t,
-		oLogger.FilterMessageSnippet("rabbitmq dial was succeed. trying to redeclare queues and subscribers").Len(),
+		oLogger.FilterMessageSnippet("amqp dial was succeed. trying to redeclare queues and subscribers").Len(),
 		1,
 	)
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("queues and subscribers was redeclared successfully").Len(), 1)
@@ -1959,12 +1959,12 @@ func TestAMQPSlowAutoAck(t *testing.T) {
 	stopCh <- struct{}{}
 	wg.Wait()
 
-	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len(), 1)
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len(), 1)
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet(`number of listeners`).Len(), 1)
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("consume channel close").Len(), 0)
 	assert.GreaterOrEqual(
 		t,
-		oLogger.FilterMessageSnippet("rabbitmq dial was succeed. trying to redeclare queues and subscribers").Len(),
+		oLogger.FilterMessageSnippet("amqp dial was succeed. trying to redeclare queues and subscribers").Len(),
 		0,
 	)
 	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("queues and subscribers was redeclared successfully").Len(), 0)
@@ -2102,7 +2102,7 @@ func TestAMQPRawPayload(t *testing.T) {
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
-	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
 func TestAMQPOTEL(t *testing.T) {
@@ -2210,7 +2210,7 @@ func TestAMQPOTEL(t *testing.T) {
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
-	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the rabbit listener").Len())
+	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 
 	t.Cleanup(func() {
 		_ = resp.Body.Close()

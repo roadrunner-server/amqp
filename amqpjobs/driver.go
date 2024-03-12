@@ -88,7 +88,7 @@ type Driver struct {
 	stopped   uint64
 }
 
-// FromConfig initializes rabbitmq pipeline
+// FromConfig initializes AMQP pipeline
 func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq jobs.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer")
 
@@ -177,7 +177,7 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 
 	// save address
 	jb.connStr = conf.Addr
-	err = jb.initRabbitMQ()
+	err = jb.init()
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -307,7 +307,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	// save address
 	jb.connStr = conf.Addr
 
-	err = jb.initRabbitMQ()
+	err = jb.init()
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -341,7 +341,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 }
 
 func (d *Driver) Push(ctx context.Context, job jobs.Message) error {
-	const op = errors.Op("rabbitmq_push")
+	const op = errors.Op("amqp_driver_push")
 	// check if the pipeline registered
 
 	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_push")
@@ -367,7 +367,7 @@ func (d *Driver) Push(ctx context.Context, job jobs.Message) error {
 
 func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 	start := time.Now().UTC()
-	const op = errors.Op("rabbit_run")
+	const op = errors.Op("amqp_driver_run")
 
 	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_run")
 	defer span.End()
@@ -490,7 +490,7 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 	start := time.Now().UTC()
 	pipe := *d.pipeline.Load()
 
-	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_resume")
+	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_pause")
 	defer span.End()
 
 	if pipe.Name() != p {
@@ -618,7 +618,7 @@ func (d *Driver) Stop(ctx context.Context) error {
 
 // handleItem
 func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
-	const op = errors.Op("rabbitmq_handle_item")
+	const op = errors.Op("amqp_driver_handle_item")
 	select {
 	case pch := <-d.publishChan:
 		// return the channel back
