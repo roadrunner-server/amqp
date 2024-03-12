@@ -22,7 +22,7 @@ type redialMsg struct {
 	err *amqp.Error
 }
 
-// redialer used to redial to the rabbitmq in case of the connection interrupts
+// redialer used to redial to the server in case of the connection interrupts
 func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 	go func() {
 		for {
@@ -220,7 +220,7 @@ func (d *Driver) redialMergeCh() {
 }
 
 func (d *Driver) redial(rm *redialMsg) {
-	const op = errors.Op("rabbitmq_redial")
+	const op = errors.Op("amqp_driver_redial")
 	// trash the broken publishing channel
 	d.reset()
 
@@ -239,12 +239,12 @@ func (d *Driver) redial(rm *redialMsg) {
 			return errors.E(op, err)
 		}
 
-		d.log.Info("rabbitmq dial was succeed. trying to redeclare queues and subscribers")
+		d.log.Info("amqp dial was succeed. trying to redeclare queues and subscribers")
 
 		// re-init connection
-		err = d.initRabbitMQ()
+		err = d.init()
 		if err != nil {
-			d.log.Error("rabbitmq dial", zap.Error(err))
+			d.log.Error("amqp dial", zap.Error(err))
 			return errors.E(op, err)
 		}
 

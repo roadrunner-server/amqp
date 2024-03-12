@@ -220,7 +220,7 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 	assert.Equal(t, oLogger.FilterMessageSnippet("amqp connection closed").Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("pipeline connection was closed, redialing").Len(), 1)
 
-	assert.Equal(t, oLogger.FilterMessageSnippet("rabbitmq dial was succeed. trying to redeclare queues and subscribers").Len(), 1)
+	assert.Equal(t, oLogger.FilterMessageSnippet("amqp dial was succeed. trying to redeclare queues and subscribers").Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("queues and subscribers was redeclared successfully").Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("connection was successfully restored").Len(), 1)
 	assert.Equal(t, oLogger.FilterMessageSnippet("redialer restarted").Len(), 1)

@@ -20,7 +20,7 @@ const (
 	RequireAndVerifyClientCert ClientAuthType = "require_and_verify_client_cert"
 )
 
-// pipeline rabbitmq info
+// pipeline amqp info
 const (
 	exchangeKey   string = "exchange"
 	exchangeType  string = "exchange_type"
