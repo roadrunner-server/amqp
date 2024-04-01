@@ -1,5 +1,5 @@
-github.com/cenkalti/backoff/v4 v4.2.1 h1:y4OZtCnogmCPw98Zjyt5a6+QwPLGkiQsYW5oUqylYbM=
-github.com/cenkalti/backoff/v4 v4.2.1/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
+github.com/cenkalti/backoff/v4 v4.3.0 h1:MyRJ/UdXutAwSAT+s3wNd7MfTIcy71VQueUuFK343L8=
+github.com/cenkalti/backoff/v4 v4.3.0/go.mod h1:Y3VNntkOUPxTVeUxJ/G5vcM//AlwfmyYozVcomhLiZE=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -30,10 +30,10 @@ github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRI
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/rabbitmq/amqp091-go v1.9.0 h1:qrQtyzB4H8BQgEuJwhmVQqVHB9O4+MNDJCCAcpc3Aoo=
 github.com/rabbitmq/amqp091-go v1.9.0/go.mod h1:+jPrT9iY2eLjRaMSRHUhc3z14E/l85kv/f+6luSD3pc=
-github.com/roadrunner-server/api/v4 v4.11.1 h1:QDcAg+2YL6z1dBWUZi32qyFUaJAAF6LsIO8hqATegZU=
-github.com/roadrunner-server/api/v4 v4.11.1/go.mod h1:YA8GSWngFSJMtloWsuqJg6GO9a2O9Lcz/743PxaCwd0=
-github.com/roadrunner-server/endure/v2 v2.4.3 h1:R9DdsLiLjtSFivZ1HKk/1eDZ0TYaKHQzakVwz9D2hto=
-github.com/roadrunner-server/endure/v2 v2.4.3/go.mod h1:4n3PdwZ3h/IRL2enDGvEVXtaQgqRnZ74VOyZtOJq528=
+github.com/roadrunner-server/api/v4 v4.12.0 h1:N8AC+b7uzrDpTPnFTBVWNIs9ZMV42hwKDCo29X84iS8=
+github.com/roadrunner-server/api/v4 v4.12.0/go.mod h1:nLV2f4O7tDh5DaMDff4oX1bNJ9erz7eyq+4TajgKGck=
+github.com/roadrunner-server/endure/v2 v2.4.4 h1:Fu7q3+Kx41ebUjfi+BH8f3yEj8+9onFERSg1T0BCHaQ=
+github.com/roadrunner-server/endure/v2 v2.4.4/go.mod h1:SifASS4cWUoQPH9U4RJ3EZ8rYYG93i57vZ73pORRrtw=
 github.com/roadrunner-server/errors v1.4.0 h1:Odjg3VZrj1q5Y8ILwoN+JgERyv0pkhrWPNOM4h68iQ8=
 github.com/roadrunner-server/errors v1.4.0/go.mod h1:78PvraAFj+Sxy5nDmo0S+h6rEMLFIDszWZxA3B0sPAs=
 github.com/rogpeppe/go-internal v1.9.0/go.mod h1:WtVeX8xhTBvf0smdhujwtBcq4Qrzq/fJaraNFVN+nFs=

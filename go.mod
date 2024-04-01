@@ -3,12 +3,12 @@ module github.com/roadrunner-server/amqp/v4
 go 1.22.1
 
 require (
-	github.com/cenkalti/backoff/v4 v4.2.1
+	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/goccy/go-json v0.10.2
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.9.0
-	github.com/roadrunner-server/api/v4 v4.11.1
-	github.com/roadrunner-server/endure/v2 v2.4.3
+	github.com/roadrunner-server/api/v4 v4.12.0
+	github.com/roadrunner-server/endure/v2 v2.4.4
 	github.com/roadrunner-server/errors v1.4.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/contrib/propagators/jaeger v1.24.0
