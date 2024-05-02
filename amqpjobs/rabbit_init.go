@@ -5,6 +5,10 @@ import (
 )
 
 func (d *Driver) init() error {
+	if d.exchangeName == "" || d.exchangeName == "amq.default" {
+		return nil
+	}
+
 	const op = errors.Op("jobs_plugin_amqp_init")
 	// Channel opens a unique, concurrent server channel to process the bulk of AMQP
 	// messages.  Any error from methods on this receiver will render the receiver
