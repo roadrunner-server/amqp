@@ -241,7 +241,7 @@ func DeclareAMQPPipe(queue, routingKey, name, headers, exclusive, durable string
 			"routing_key":          routingKey,
 			"queue":                queue,
 			"exchange_type":        "direct",
-			"exchange":             "amq.default",
+			"exchange":             "",
 			"prefetch":             "100",
 			"delete_queue_on_stop": "true",
 			"priority":             "3",

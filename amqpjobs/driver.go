@@ -265,7 +265,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		routingKey:        pipeline.String(routingKey, ""),
 		queue:             pipeline.String(queue, ""),
 		exchangeType:      pipeline.String(exchangeType, "direct"),
-		exchangeName:      pipeline.String(exchangeKey, "amq.default"),
+		exchangeName:      pipeline.String(exchangeKey, ""),
 		prefetch:          prf,
 		priority:          int64(pipeline.Int(priority, 10)),
 		durable:           pipeline.Bool(durable, false),

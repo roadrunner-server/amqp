@@ -107,10 +107,6 @@ func (c *config) InitDefault() error {
 		c.ExchangeType = "direct"
 	}
 
-	if c.Exchange == "" {
-		c.Exchange = "amq.default"
-	}
-
 	if c.RedialTimeout == 0 {
 		c.RedialTimeout = 60
 	}
