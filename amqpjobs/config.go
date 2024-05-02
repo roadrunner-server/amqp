@@ -108,7 +108,7 @@ func (c *config) InitDefault() error {
 	}
 
 	if c.Exchange == "" {
-		c.Exchange = "amqp.default"
+		c.Exchange = "amq.default"
 	}
 
 	if c.RedialTimeout == 0 {
