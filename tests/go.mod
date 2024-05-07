@@ -2,6 +2,8 @@ module tests
 
 go 1.22.2
 
+toolchain go1.22.3
+
 require (
 	github.com/Shopify/toxiproxy/v2 v2.9.0
 	github.com/goccy/go-json v0.10.2
