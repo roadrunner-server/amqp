@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/roadrunner-server/api/v4 v4.12.0
-	github.com/roadrunner-server/endure/v2 v2.4.4
+	github.com/roadrunner-server/endure/v2 v2.4.5
 	github.com/roadrunner-server/errors v1.4.0
 	github.com/stretchr/testify v1.9.0
 	go.opentelemetry.io/contrib/propagators/jaeger v1.27.0
@@ -16,7 +16,7 @@ require (
 	go.opentelemetry.io/otel/sdk v1.27.0
 	go.opentelemetry.io/otel/trace v1.27.0
 	go.uber.org/zap v1.27.0
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.21.0
 )
 
 exclude (
