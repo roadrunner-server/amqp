@@ -3,13 +3,14 @@ package amqpjobs
 import (
 	"context"
 	stderr "errors"
+	"maps"
 	"sync/atomic"
 	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v4/plugins/v3/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
@@ -41,7 +42,7 @@ type Options struct {
 	// Pipeline manually specified pipeline.
 	Pipeline string `json:"pipeline,omitempty"`
 	// Delay defines time duration to delay execution for. Defaults to none.
-	Delay int64 `json:"delay,omitempty"`
+	Delay int `json:"delay,omitempty"`
 	// AutoAck option
 	AutoAck bool `json:"auto_ack"`
 	// AMQP Queue
@@ -131,6 +132,19 @@ func (i *Item) Ack() error {
 	return i.Options.ack(i.Options.multipleAck)
 }
 
+func (i *Item) NackWithOptions(requeue bool, delay int) error {
+	if atomic.LoadUint64(i.Options.stopped) == 1 {
+		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
+	}
+
+	// there is no native mechanism to delay requeue in AMQP
+	if i.Options.Delay > 0 {
+		return i.Requeue(nil, delay)
+	}
+
+	return i.Options.nack(true, requeue)
+}
+
 func (i *Item) Nack() error {
 	if atomic.LoadUint64(i.Options.stopped) == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
@@ -142,7 +156,7 @@ func (i *Item) Nack() error {
 }
 
 // Requeue with the provided delay, handled by the Nack
-func (i *Item) Requeue(headers map[string][]string, delay int64) error {
+func (i *Item) Requeue(headers map[string][]string, delay int) error {
 	if atomic.LoadUint64(i.Options.stopped) == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
@@ -152,7 +166,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 
 	// overwrite the delay
 	i.Options.Delay = delay
-	i.headers = headers
+	maps.Copy(i.headers, headers)
 
 	err := i.Options.requeueFn(context.Background(), i)
 	if err != nil {
@@ -164,7 +178,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 		return err
 	}
 
-	// ack the job
+	// ack the previous message to avoid duplicates
 	err = i.Options.ack(false)
 	if err != nil {
 		return err
@@ -215,7 +229,7 @@ func fromJob(job jobs.Message) *Item {
 		Options: &Options{
 			Priority: job.Priority(),
 			Pipeline: job.GroupID(),
-			Delay:    job.Delay(),
+			Delay:    int(job.Delay()),
 			AutoAck:  job.AutoAck(),
 		},
 	}
@@ -280,7 +294,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	if t, ok := deliv.Headers[jobs.RRDelay]; ok {
 		switch t.(type) {
 		case int, int16, int32, int64:
-			item.Options.Delay = t.(int64)
+			item.Options.Delay = t.(int)
 		default:
 			d.log.Warn("unknown delay type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
 		}
