@@ -304,9 +304,15 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	}
 
 	if t, ok := deliv.Headers[jobs.RRDelay]; ok {
-		switch t.(type) {
-		case int, int16, int32, int64:
-			item.Options.Delay = t.(int)
+		switch tt := t.(type) {
+		case int:
+			item.Options.Delay = tt
+		case int16:
+			item.Options.Delay = int(tt)
+		case int32:
+			item.Options.Delay = int(tt)
+		case int64:
+			item.Options.Delay = int(tt)
 		default:
 			d.log.Warn("unknown delay type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
 		}
