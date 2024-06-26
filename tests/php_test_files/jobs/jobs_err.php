@@ -10,7 +10,7 @@ use Spiral\Goridge\StreamRelay;
 use Spiral\RoadRunner\Jobs\Consumer;
 use Spiral\RoadRunner\Jobs\Serializer\JsonSerializer;
 
-ini_set('display_errors', 'stderr');
+ini_set("display_errors", "stderr");
 require dirname(__DIR__) . "/vendor/autoload.php";
 
 $consumer = new Spiral\RoadRunner\Jobs\Consumer();
@@ -18,14 +18,17 @@ $consumer = new Spiral\RoadRunner\Jobs\Consumer();
 while ($task = $consumer->waitTask()) {
     try {
         $headers = $task->getHeaders();
-        $total_attempts = (int)$task->getHeaderLine("attempts") + 1;
+        $total_attempts = (int) $task->getHeaderLine("attempts") + 1;
 
         if ($total_attempts > 3) {
-            $task->complete();
+            $task->ack();
         } else {
-            $task->withHeader("attempts",$total_attempts)->withDelay(5)->fail("failed", true);
+            $task
+                ->withHeader("attempts", $total_attempts)
+                ->withDelay(5)
+                ->nack("failed", true);
         }
     } catch (\Throwable $e) {
-        $rr->error((string)$e);
+        $rr->error((string) $e);
     }
 }

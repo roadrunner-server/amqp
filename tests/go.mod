@@ -8,18 +8,18 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/roadrunner-server/amqp/v4 v4.9.14
-	github.com/roadrunner-server/api/v4 v4.12.0
-	github.com/roadrunner-server/config/v4 v4.9.2
+	github.com/roadrunner-server/api/v4 v4.13.0
+	github.com/roadrunner-server/config/v4 v4.9.3
 	github.com/roadrunner-server/endure/v2 v2.4.5
 	github.com/roadrunner-server/goridge/v3 v3.8.2
-	github.com/roadrunner-server/informer/v4 v4.5.4
-	github.com/roadrunner-server/jobs/v4 v4.9.4
-	github.com/roadrunner-server/logger/v4 v4.4.4
-	github.com/roadrunner-server/metrics/v4 v4.3.4
-	github.com/roadrunner-server/otel/v4 v4.5.4
-	github.com/roadrunner-server/resetter/v4 v4.3.4
-	github.com/roadrunner-server/rpc/v4 v4.4.4
-	github.com/roadrunner-server/server/v4 v4.8.4
+	github.com/roadrunner-server/informer/v4 v4.5.5
+	github.com/roadrunner-server/jobs/v4 v4.10.0
+	github.com/roadrunner-server/logger/v4 v4.4.5
+	github.com/roadrunner-server/metrics/v4 v4.3.5
+	github.com/roadrunner-server/otel/v4 v4.5.5
+	github.com/roadrunner-server/resetter/v4 v4.3.5
+	github.com/roadrunner-server/rpc/v4 v4.4.5
+	github.com/roadrunner-server/server/v4 v4.8.5
 	github.com/stretchr/testify v1.9.0
 	go.uber.org/zap v1.27.0
 )
@@ -97,8 +97,8 @@ require (
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240617180043-68d350f18fd4 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240617180043-68d350f18fd4 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240624140628-dc46fd24d27d // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240624140628-dc46fd24d27d // indirect
 	google.golang.org/grpc v1.64.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect

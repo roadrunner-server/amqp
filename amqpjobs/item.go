@@ -137,12 +137,18 @@ func (i *Item) NackWithOptions(requeue bool, delay int) error {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 
-	// there is no native mechanism to delay requeue in AMQP
-	if i.Options.Delay > 0 {
-		return i.Requeue(nil, delay)
+	if requeue {
+		// if delay is set, requeue with delay via non-native requeue
+		if delay > 0 {
+			return i.Requeue(nil, delay)
+			// if delay is not set, requeue via native requeue
+		}
+
+		return i.Options.nack(false, true)
 	}
 
-	return i.Options.nack(true, requeue)
+	// otherwise, nack without requeue
+	return i.Options.nack(false, false)
 }
 
 func (i *Item) Nack() error {
@@ -166,7 +172,13 @@ func (i *Item) Requeue(headers map[string][]string, delay int) error {
 
 	// overwrite the delay
 	i.Options.Delay = delay
-	maps.Copy(i.headers, headers)
+	if i.headers == nil {
+		i.headers = make(map[string][]string)
+	}
+
+	if len(headers) > 0 {
+		maps.Copy(i.headers, headers)
+	}
 
 	err := i.Options.requeueFn(context.Background(), i)
 	if err != nil {
