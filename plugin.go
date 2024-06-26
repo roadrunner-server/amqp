@@ -3,7 +3,7 @@ package amqp
 import (
 	"github.com/roadrunner-server/amqp/v4/amqpjobs"
 
-	"github.com/roadrunner-server/api/v4/plugins/v3/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/endure/v2/dep"
 	"github.com/roadrunner-server/errors"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
