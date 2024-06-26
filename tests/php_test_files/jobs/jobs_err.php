@@ -26,7 +26,7 @@ while ($task = $consumer->waitTask()) {
             $task
                 ->withHeader("attempts", $total_attempts)
                 ->withDelay(5)
-                ->nack("failed", true);
+                ->requeue("failed");
         }
     } catch (\Throwable $e) {
         $rr->error((string) $e);
