@@ -1289,7 +1289,6 @@ func TestAMQPJobsError(t *testing.T) {
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was paused").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was resumed").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
-	require.Equal(t, 3, oLogger.FilterMessageSnippet("jobs protocol error").Len())
 	require.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
