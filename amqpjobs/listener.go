@@ -34,7 +34,7 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 		}
 
 		d.log.Debug("delivery channel was closed, leaving the AMQP listener")
-		// reduce number of listeners
+		// reduce the number of listeners
 		if atomic.LoadUint32(&d.listeners) == 0 {
 			d.log.Debug("number of listeners", zap.Uint32("listeners", atomic.LoadUint32(&d.listeners)))
 			return

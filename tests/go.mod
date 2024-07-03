@@ -1,6 +1,6 @@
 module tests
 
-go 1.22.4
+go 1.22.5
 
 require (
 	github.com/Shopify/toxiproxy/v2 v2.9.0
@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/roadrunner-server/amqp/v4 v4.9.14
-	github.com/roadrunner-server/api/v4 v4.13.0
+	github.com/roadrunner-server/api/v4 v4.15.0
 	github.com/roadrunner-server/config/v4 v4.9.3
 	github.com/roadrunner-server/endure/v2 v2.4.5
 	github.com/roadrunner-server/goridge/v3 v3.8.2
@@ -48,17 +48,19 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
+	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/openzipkin/zipkin-go v0.4.3 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml/v2 v2.2.2 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.19.1 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.54.0 // indirect
+	github.com/prometheus/common v0.55.0 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/roadrunner-server/errors v1.4.0 // indirect
-	github.com/roadrunner-server/sdk/v4 v4.7.3 // indirect
-	github.com/roadrunner-server/tcplisten v1.4.0 // indirect
+	github.com/roadrunner-server/events v1.0.0 // indirect
+	github.com/roadrunner-server/sdk/v4 v4.8.0 // indirect
+	github.com/roadrunner-server/tcplisten v1.5.0 // indirect
 	github.com/robfig/cron v1.2.0 // indirect
 	github.com/sagikazarmark/locafero v0.6.0 // indirect
 	github.com/sagikazarmark/slog-shim v0.1.0 // indirect
@@ -77,17 +79,17 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.52.0 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.27.0 // indirect
-	go.opentelemetry.io/otel v1.27.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.27.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.27.0 // indirect
-	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.27.0 // indirect
-	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.27.0 // indirect
-	go.opentelemetry.io/otel/exporters/zipkin v1.27.0 // indirect
-	go.opentelemetry.io/otel/metric v1.27.0 // indirect
-	go.opentelemetry.io/otel/sdk v1.27.0 // indirect
-	go.opentelemetry.io/otel/trace v1.27.0 // indirect
+	go.opentelemetry.io/otel v1.28.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace v1.28.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc v1.28.0 // indirect
+	go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracehttp v1.28.0 // indirect
+	go.opentelemetry.io/otel/exporters/stdout/stdouttrace v1.28.0 // indirect
+	go.opentelemetry.io/otel/exporters/zipkin v1.28.0 // indirect
+	go.opentelemetry.io/otel/metric v1.28.0 // indirect
+	go.opentelemetry.io/otel/sdk v1.28.0 // indirect
+	go.opentelemetry.io/otel/trace v1.28.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
-	go.temporal.io/api v1.34.0 // indirect
+	go.temporal.io/api v1.35.0 // indirect
 	go.temporal.io/sdk v1.27.0 // indirect
 	go.temporal.io/sdk/contrib/opentelemetry v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
@@ -97,9 +99,9 @@ require (
 	golang.org/x/sys v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20240624140628-dc46fd24d27d // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240624140628-dc46fd24d27d // indirect
-	google.golang.org/grpc v1.64.0 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20240701130421-f6361c86f094 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240701130421-f6361c86f094 // indirect
+	google.golang.org/grpc v1.65.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
