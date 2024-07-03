@@ -13,7 +13,7 @@ import (
 	mocklogger "tests/mock"
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
-	amqpDriver "github.com/roadrunner-server/amqp/v4"
+	amqpDriver "github.com/roadrunner-server/amqp/v5"
 	"github.com/roadrunner-server/config/v4"
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v4"

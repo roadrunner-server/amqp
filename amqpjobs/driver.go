@@ -13,8 +13,9 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v4/plugins/v3/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/events"
 	jprop "go.opentelemetry.io/contrib/propagators/jaeger"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
@@ -46,6 +47,11 @@ type Driver struct {
 	consumeAll bool
 	tracer     *sdktrace.TracerProvider
 	prop       propagation.TextMapPropagator
+
+	// events
+	eventsCh chan events.Event
+	eventBus *events.Bus
+	id       string
 
 	// amqp connection notifiers
 	notifyCloseConnCh    chan *amqp.Error
@@ -98,8 +104,8 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 
 	prop := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}, jprop.Jaeger{})
 	otel.SetTextMapPropagator(prop)
-	// we need to obtain two parts of the amqp information here.
-	// firs part - address to connect, it is located in the global section under the amqp pluginName
+	// we need to get two parts of the amqp information here.
+	// first part - address to connect, it is located in the global section under the amqp pluginName
 	// second part - queues and other pipeline information
 	// if no such key - error
 	if !cfg.Has(configKey) {
@@ -129,6 +135,9 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 	}
 	// PARSE CONFIGURATION END -------
 
+	eventsCh := make(chan events.Event, 1)
+	eventBus, id := events.NewEventBus()
+
 	jb := &Driver{
 		tracer:     tracer,
 		prop:       prop,
@@ -136,6 +145,11 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		pq:         pq,
 		stopCh:     make(chan struct{}, 1),
 		consumeAll: conf.ConsumeAll,
+
+		// events
+		eventsCh: eventsCh,
+		eventBus: eventBus,
+		id:       id,
 
 		priority: conf.Priority,
 		delayed:  ptrTo(int64(0)),
@@ -217,8 +231,8 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 
 	prop := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{}, propagation.Baggage{}, jprop.Jaeger{})
 	otel.SetTextMapPropagator(prop)
-	// we need to obtain two parts of the amqp information here.
-	// firs part - address to connect, it is located in the global section under the amqp pluginName
+	// we need to get two parts of the amqp information here.
+	// first part - address to connect, it is located in the global section under the amqp pluginName
 	// second part - queues and other pipeline information
 
 	// only global section
@@ -244,6 +258,9 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		log.Error("prefetch parse, driver will use default (10) prefetch", zap.String("prefetch", pipeline.String(prefetch, "10")))
 	}
 
+	eventsCh := make(chan events.Event, 1)
+	eventBus, id := events.NewEventBus()
+
 	jb := &Driver{
 		prop:    prop,
 		tracer:  tracer,
@@ -251,6 +268,11 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		pq:      pq,
 		stopCh:  make(chan struct{}, 1),
 		delayed: ptrTo(int64(0)),
+
+		// events
+		eventsCh: eventsCh,
+		eventBus: eventBus,
+		id:       id,
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -589,7 +611,7 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 	// run listener
 	d.listener(deliv)
 
-	// increase number of listeners
+	// increase the number of listeners
 	atomic.AddUint32(&d.listeners, 1)
 	d.log.Debug("pipeline was resumed",
 		zap.String("driver", pipe.Driver()),
@@ -607,10 +629,16 @@ func (d *Driver) Stop(ctx context.Context) error {
 	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_stop")
 	defer span.End()
 
+	d.eventBus.Unsubscribe(d.id)
+
 	atomic.StoreUint64(&d.stopped, 1)
 	d.stopCh <- struct{}{}
 
 	pipe := *d.pipeline.Load()
+
+	// remove all pending JOBS associated with the pipeline
+	_ = d.pq.Remove(pipe.Name())
+
 	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
 	close(d.redialCh)
 	return nil

@@ -3,13 +3,14 @@ package amqpjobs
 import (
 	"context"
 	stderr "errors"
+	"maps"
 	"sync/atomic"
 	"time"
 
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"github.com/roadrunner-server/api/v4/plugins/v3/jobs"
+	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/errors"
 	"go.uber.org/zap"
 )
@@ -21,27 +22,27 @@ const (
 )
 
 type Item struct {
-	// Job contains pluginName of job broker (usually PHP class).
+	// Job contains the pluginName of job broker (usually PHP class).
 	Job string `json:"job"`
-	// Ident is unique identifier of the job, should be provided from outside
+	// Ident is a unique identifier of the job, should be provided from outside
 	Ident string `json:"id"`
 	// Payload is string data (usually JSON) passed to Job broker.
 	Payload []byte `json:"payload"`
 	// Headers with key-values pairs
 	headers map[string][]string
-	// Options contains set of PipelineOptions specific to job execution. Can be empty.
+	// Options contain a set of PipelineOptions specific to job execution. Can be empty.
 	Options *Options `json:"options,omitempty"`
 }
 
-// Options carry information about how to handle given job.
+// Options carry information about how to handle a given job.
 type Options struct {
 	// Priority is job priority, default - 10
-	// pointer to distinguish 0 as a priority and nil as priority not set
+	// pointer to distinguish 0 as a priority and nil as a priority not set
 	Priority int64 `json:"priority"`
 	// Pipeline manually specified pipeline.
 	Pipeline string `json:"pipeline,omitempty"`
 	// Delay defines time duration to delay execution for. Defaults to none.
-	Delay int64 `json:"delay,omitempty"`
+	Delay int `json:"delay,omitempty"`
 	// AutoAck option
 	AutoAck bool `json:"auto_ack"`
 	// AMQP Queue
@@ -53,8 +54,8 @@ type Options struct {
 	ack func(multiply bool) error
 
 	// nack negatively acknowledge the delivery of message(s) identified by the delivery tag from either the client or server.
-	// When multiple is true, nack messages up to and including delivered messages up until the delivery tag delivered on the same channel.
-	// When requeue is true, request the server to deliver this message to a different Driver. If it is not possible or requeue is false, the message will be dropped or delivered to a server configured dead-letter queue.
+	// When multiple is true, nack messages up to and including delivered messages up until the delivery tag is delivered on the same channel.
+	// When requeue is true, request the server to deliver this message to a different Driver. If it is not possible or requeue is false, the message will be dropped or delivered to a server-configured dead-letter queue.
 	// This method must not be used to select or requeue messages the client wishes not to handle, rather it is to inform the server that the client is incapable of handling this message at this time
 	nack func(multiply bool, requeue bool) error
 
@@ -67,7 +68,7 @@ type Options struct {
 	requeue     bool
 }
 
-// DelayDuration returns delay duration in a form of time.Duration.
+// DelayDuration returns delay duration in the form of time.Duration.
 func (o *Options) DelayDuration() time.Duration {
 	return time.Second * time.Duration(o.Delay)
 }
@@ -131,6 +132,25 @@ func (i *Item) Ack() error {
 	return i.Options.ack(i.Options.multipleAck)
 }
 
+func (i *Item) NackWithOptions(requeue bool, delay int) error {
+	if atomic.LoadUint64(i.Options.stopped) == 1 {
+		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
+	}
+
+	if requeue {
+		// if delay is set, requeue with delay via non-native requeue
+		if delay > 0 {
+			return i.Requeue(nil, delay)
+			// if delay is not set, requeue via native requeue
+		}
+
+		return i.Options.nack(false, true)
+	}
+
+	// otherwise, nack without requeue
+	return i.Options.nack(false, false)
+}
+
 func (i *Item) Nack() error {
 	if atomic.LoadUint64(i.Options.stopped) == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
@@ -142,7 +162,7 @@ func (i *Item) Nack() error {
 }
 
 // Requeue with the provided delay, handled by the Nack
-func (i *Item) Requeue(headers map[string][]string, delay int64) error {
+func (i *Item) Requeue(headers map[string][]string, delay int) error {
 	if atomic.LoadUint64(i.Options.stopped) == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
@@ -152,7 +172,13 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 
 	// overwrite the delay
 	i.Options.Delay = delay
-	i.headers = headers
+	if i.headers == nil {
+		i.headers = make(map[string][]string)
+	}
+
+	if len(headers) > 0 {
+		maps.Copy(i.headers, headers)
+	}
 
 	err := i.Options.requeueFn(context.Background(), i)
 	if err != nil {
@@ -164,7 +190,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int64) error {
 		return err
 	}
 
-	// ack the job
+	// ack the previous message to avoid duplicates
 	err = i.Options.ack(false)
 	if err != nil {
 		return err
@@ -215,7 +241,7 @@ func fromJob(job jobs.Message) *Item {
 		Options: &Options{
 			Priority: job.Priority(),
 			Pipeline: job.GroupID(),
-			Delay:    job.Delay(),
+			Delay:    int(job.Delay()),
 			AutoAck:  job.AutoAck(),
 		},
 	}
@@ -278,9 +304,15 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	}
 
 	if t, ok := deliv.Headers[jobs.RRDelay]; ok {
-		switch t.(type) {
-		case int, int16, int32, int64:
-			item.Options.Delay = t.(int64)
+		switch tt := t.(type) {
+		case int:
+			item.Options.Delay = tt
+		case int16:
+			item.Options.Delay = int(tt)
+		case int32:
+			item.Options.Delay = int(tt)
+		case int64:
+			item.Options.Delay = int(tt)
 		default:
 			d.log.Warn("unknown delay type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
 		}

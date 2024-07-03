@@ -7,10 +7,13 @@ import (
 	"github.com/cenkalti/backoff/v4"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/errors"
+	"github.com/roadrunner-server/events"
 	"go.uber.org/zap"
 )
 
 const (
+	// pipeline operation
+	restartStr       string = "restart"
 	ConnCloseType    string = "connection"
 	ConsumeCloseType string = "consume"
 	PublishCloseType string = "publish"
@@ -129,7 +132,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				pch := <-d.publishChan
 				stCh := <-d.stateChan
 
-				// cancel new deliviries
+				// cancel new deliveries
 				err := pch.Cancel(d.consumeID, false)
 				if err != nil {
 					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.consumeID))
@@ -319,7 +322,9 @@ func (d *Driver) redial(rm *redialMsg) {
 
 	retryErr := backoff.Retry(operation, expb)
 	if retryErr != nil {
-		d.log.Error("backoff operation failed", zap.Error(retryErr))
+		d.log.Error("backoff operation failed, pipeline will be recreated", zap.Error(retryErr))
+		// recreate pipeline on fail
+		d.eventsCh <- events.NewEvent(events.EventJOBSDriverCommand, pipe.Name(), restartStr)
 		return
 	}
 
