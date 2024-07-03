@@ -1028,6 +1028,8 @@ github.com/redis/go-redis/v9 v9.1.0/go.mod h1:urWj3He21Dj5k4TK1y59xH8Uj6ATueP8AH
 github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec h1:W09IVJc94icq4NjY3clb7Lk8O1qJ8BdBEF8z0ibU0rE=
 github.com/rivo/uniseg v0.4.4 h1:8TfxU8dW6PdqD27gjM8MVNuicgxIjxpm4K7x4jp8sis=
 github.com/rivo/uniseg v0.4.4/go.mod h1:FN3SvrM+Zdj16jyLfmOkMNblXMcoc8DfTHruCPUcx88=
+github.com/roadrunner-server/amqp/v4 v4.9.14 h1:WgTwC5W/0e60P2K/WDncoR4VUG5hZmnlmexjzhufXoQ=
+github.com/roadrunner-server/amqp/v4 v4.9.14/go.mod h1:3lfgBVU9XCgoLZ047ARHtXSw8C/5jipJyqxO/qgcZ3M=
 github.com/roadrunner-server/api/v4 v4.13.0/go.mod h1:J8ZzDCNFs3BQDql793eBeshpjNJxLrCpEMooGzapTLo=
 github.com/roadrunner-server/app-logger/v4 v4.1.0 h1:+NRiRDXE/gwAl6ROGcvcSVUST9+KhleP1T9SAmd8GAA=
 github.com/roadrunner-server/app-logger/v4 v4.1.0/go.mod h1:X1Z4Pnuou5mE0l1ZZzKfdnqG7sRhtSm/asOM5wPdoTg=

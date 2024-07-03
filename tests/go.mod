@@ -7,7 +7,7 @@ require (
 	github.com/goccy/go-json v0.10.3
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
-	github.com/roadrunner-server/amqp/v4 v4.9.14
+	github.com/roadrunner-server/amqp/v5 v5.0.0
 	github.com/roadrunner-server/api/v4 v4.15.0
 	github.com/roadrunner-server/config/v4 v4.9.3
 	github.com/roadrunner-server/endure/v2 v2.4.5
@@ -24,7 +24,7 @@ require (
 	go.uber.org/zap v1.27.0
 )
 
-replace github.com/roadrunner-server/amqp/v4 => ../
+replace github.com/roadrunner-server/amqp/v5 => ../
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect

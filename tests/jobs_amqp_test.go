@@ -22,7 +22,7 @@ import (
 	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
-	amqpDriver "github.com/roadrunner-server/amqp/v4"
+	amqpDriver "github.com/roadrunner-server/amqp/v5"
 	jobsProto "github.com/roadrunner-server/api/v4/build/jobs/v1"
 	jobsState "github.com/roadrunner-server/api/v4/plugins/v1/jobs"
 	"github.com/roadrunner-server/config/v4"
