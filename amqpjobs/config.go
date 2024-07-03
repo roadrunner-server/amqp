@@ -9,7 +9,7 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-// TSL auth type
+// ClientAuthType TSL auth type
 type ClientAuthType string
 
 const (

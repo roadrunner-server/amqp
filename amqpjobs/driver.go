@@ -629,6 +629,8 @@ func (d *Driver) Stop(ctx context.Context) error {
 	_, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_stop")
 	defer span.End()
 
+	d.eventBus.Unsubscribe(d.id)
+
 	atomic.StoreUint64(&d.stopped, 1)
 	d.stopCh <- struct{}{}
 
