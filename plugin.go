@@ -55,12 +55,12 @@ func (p *Plugin) Collects() []*dep.In {
 	}
 }
 
-// DriverFromConfig constructs kafka driver from the .rr.yaml configuration
+// DriverFromConfig constructs amqp driver from the .rr.yaml configuration
 func (p *Plugin) DriverFromConfig(configKey string, pq jobs.Queue, pipeline jobs.Pipeline) (jobs.Driver, error) {
 	return amqpjobs.FromConfig(p.tracer, configKey, p.log, p.cfg, pipeline, pq)
 }
 
-// DriverFromPipeline constructs kafka driver from pipeline
+// DriverFromPipeline constructs amqp driver from pipeline
 func (p *Plugin) DriverFromPipeline(pipe jobs.Pipeline, pq jobs.Queue) (jobs.Driver, error) {
 	return amqpjobs.FromPipeline(p.tracer, pipe, p.log, p.cfg, pq)
 }
