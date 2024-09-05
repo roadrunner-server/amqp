@@ -1,8 +1,6 @@
 module tests
 
-go 1.23
-
-toolchain go1.23.0
+go 1.23.0
 
 require (
 	github.com/Shopify/toxiproxy/v2 v2.9.0
@@ -19,7 +17,7 @@ require (
 	github.com/roadrunner-server/logger/v5 v5.0.2
 	github.com/roadrunner-server/metrics/v5 v5.0.2
 	github.com/roadrunner-server/otel/v5 v5.0.1
-	github.com/roadrunner-server/resetter/v5 v5.0.2
+	github.com/roadrunner-server/resetter/v5 v5.0.3
 	github.com/roadrunner-server/rpc/v5 v5.0.2
 	github.com/roadrunner-server/server/v5 v5.1.0
 	github.com/stretchr/testify v1.9.0
@@ -59,7 +57,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.20.3 // indirect
 	github.com/prometheus/client_model v0.6.1 // indirect
-	github.com/prometheus/common v0.59.0 // indirect
+	github.com/prometheus/common v0.59.1 // indirect
 	github.com/prometheus/procfs v0.15.1 // indirect
 	github.com/roadrunner-server/context v1.0.1 // indirect
 	github.com/roadrunner-server/errors v1.4.1 // indirect
