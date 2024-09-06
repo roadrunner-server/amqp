@@ -2,7 +2,7 @@ module tests
 
 go 1.23
 
-toolchain go1.23.0
+toolchain go1.23.1
 
 require (
 	github.com/Shopify/toxiproxy/v2 v2.9.0
@@ -96,7 +96,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.29.0 // indirect
 	go.opentelemetry.io/proto/otlp v1.3.1 // indirect
 	go.temporal.io/api v1.39.0 // indirect
-	go.temporal.io/sdk v1.28.1 // indirect
+	go.temporal.io/sdk v1.29.0 // indirect
 	go.temporal.io/sdk/contrib/opentelemetry v0.6.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/exp v0.0.0-20240904232852-e7e105dedf7e // indirect

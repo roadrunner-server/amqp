@@ -2,7 +2,7 @@ module github.com/roadrunner-server/amqp/v5
 
 go 1.23
 
-toolchain go1.23.0
+toolchain go1.23.1
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
