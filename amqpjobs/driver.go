@@ -468,7 +468,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 
 			if !d.conn.IsClosed() {
 				return &jobs.State{
-					Priority: uint64(pipe.Priority()),
+					Priority: uint64(pipe.Priority()), //nolint:gosec
 					Pipeline: pipe.Name(),
 					Driver:   pipe.Driver(),
 					Delayed:  atomic.LoadInt64(d.delayed),
@@ -494,7 +494,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 		}
 
 		return &jobs.State{
-			Priority: uint64(pipe.Priority()),
+			Priority: uint64(pipe.Priority()), //nolint:gosec
 			Pipeline: pipe.Name(),
 			Driver:   pipe.Driver(),
 			Queue:    q.Name,
