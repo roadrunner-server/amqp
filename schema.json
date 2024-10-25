@@ -34,23 +34,23 @@
             "delete_queue_on_stop": {
               "type": "boolean",
               "default": false,
-              "description": "Delete the queue when stopping the pipeline."
+              "description": "Whether to delete the queue when stopping the pipeline."
             },
             "queue": {
               "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
             },
             "exchange": {
-              "description": "Exchange name",
+              "description": "The name of the exchange.",
               "type": "string",
               "default": "amqp.default"
             },
             "redial_timeout": {
-              "description": "Redial timeout (in seconds). How long to try to reconnect to the AMQP server",
+              "description": "Redial timeout (in seconds). How long to try to reconnect to the AMQP server. Default or zero means 60.",
               "type": "integer",
               "default": 60
             },
             "exchange_durable": {
-              "description": "Durable exchange (rabbitmq option: https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges)",
+              "description": "Whether the exchange is durable. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
               "type": "boolean",
               "default": false
             },
@@ -60,53 +60,55 @@
               "description": "Whether the queue is durable."
             },
             "consumer_id": {
-              "description": "The consumer_id is identified by a string that is unique and scoped for all consumers on this channel",
+              "description": "The unique identifier for the consumer amongst all consumers on this channel.",
               "type": "string",
-              "default": "roadrunner+uuid"
+              "default": "roadrunner-<uuid>"
             },
             "exchange_auto_delete": {
-              "description": "Auto-delete (exchange is deleted when last queue is unbound from it): https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+              "description": "Whether to auto-delete the exchange when the last queue is unbound from it. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
               "type": "boolean",
               "default": false
             },
             "queue_auto_delete": {
-              "description": "Auto-delete (queue that has had at least one consumer is deleted when last consumer unsubscribes)",
+              "description": "Whether to auto-delete queues that have had at least one consumer when the last consumer unsubscribes.",
               "type": "boolean",
               "default": false
             },
             "exchange_type": {
-              "description": "Exchange type",
+              "description": "The type of exchange.",
               "type": "string",
               "default": "direct"
             },
             "routing_key": {
-              "description": "Routing key for the queue",
+              "description": "Routing key for the queue.",
               "type": "string"
             },
             "exclusive": {
-              "description": "Declare a queue exclusive at the exchange",
+              "description": "Declare a queue exclusive at the exchange.",
               "type": "boolean",
               "default": false
             },
             "multiple_ack": {
-              "description": "When multiple is true, this delivery and all prior unacknowledged deliveries on the same channel will be acknowledged. This is useful for batch processing of deliveries",
+              "description": "When multiple ACK is enabled, this delivery and all prior unacknowledged deliveries on the same channel will be acknowledged. This is useful for batch processing of deliveries.",
               "type": "boolean",
               "default": false
             },
             "requeue_on_fail": {
-              "description": "Use rabbitmq mechanism to requeue the job on fail",
+              "description": "Whether to use RabbitMQ mechanisms to requeue the job on failure.",
               "type": "boolean",
               "default": false
             },
             "queue_headers": {
               "description": "Queue declare args.",
               "type": "object",
+              "minProperties": 1,
+              "additionalProperties": false,
               "patternProperties": {
                 "^[a-zA-Z0-9._-]+$": {
-                  "type": "string"
+                  "type": "string",
+                  "minLength": 1
                 }
-              },
-              "additionalProperties": false
+              }
             }
           }
         }
@@ -121,7 +123,8 @@
           "title": "AMQP Server URI",
           "description": "AMQP URI to connect to the rabbitmq server. See https://www.rabbitmq.com/uri-spec.html",
           "type": "string",
-          "default": "amqp://guest:guest@127.0.0.1:5672"
+          "default": "amqp://guest:guest@127.0.0.1:5672",
+          "minLength": 1
         },
         "tls": {
           "title": "TLS Configuration",
@@ -129,16 +132,16 @@
           "description": "TLS configuration options for AMQP.",
           "properties": {
             "key": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/roadrunner/refs/heads/master/schemas/config/3.0.schema.json#/definitions/TLSKeyFile"
+              "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/SSL/properties/key"
             },
             "cert": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/roadrunner/refs/heads/master/schemas/config/3.0.schema.json#/definitions/TLSCertFile"
+              "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/SSL/properties/cert"
             },
             "root_ca": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/roadrunner/refs/heads/master/schemas/config/3.0.schema.json#/definitions/TLSCAFile"
+              "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/SSL/properties/root_ca"
             },
             "client_auth_type": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/roadrunner/refs/heads/master/schemas/config/3.0.schema.json#/definitions/TLSClientAuthType"
+              "$ref": "https://raw.githubusercontent.com/roadrunner-server/http/refs/heads/master/schema.json#/$defs/ClientAuthType"
             }
           },
           "required": [
