@@ -26,7 +26,6 @@ const (
 	exchangeType  string = "exchange_type"
 	queue         string = "queue"
 	routingKey    string = "routing_key"
-	consumeAll    string = "consume_all"
 	prefetch      string = "prefetch"
 	exclusive     string = "exclusive"
 	durable       string = "durable"
@@ -71,7 +70,6 @@ type config struct {
 	ExchangeType string `mapstructure:"exchange_type"`
 
 	RoutingKey        string `mapstructure:"routing_key"`
-	ConsumeAll        bool   `mapstructure:"consume_all"`
 	Exclusive         bool   `mapstructure:"exclusive"`
 	Durable           bool   `mapstructure:"durable"`
 	DeleteQueueOnStop bool   `mapstructure:"delete_queue_on_stop"`

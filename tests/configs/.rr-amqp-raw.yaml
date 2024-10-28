@@ -37,7 +37,6 @@ jobs:
         delete_queue_on_stop: true
         exchange_type: direct
         routing_key: test-raw
-        consume_all: true
 
   consume: [ "test-raw" ]
 
