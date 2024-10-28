@@ -28,9 +28,6 @@
             "prefetch": {
               "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/prefetch"
             },
-            "consume_all": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/consume_all"
-            },
             "delete_queue_on_stop": {
               "type": "boolean",
               "default": false,

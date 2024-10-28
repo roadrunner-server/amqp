@@ -40,13 +40,12 @@ type Configurer interface {
 }
 
 type Driver struct {
-	mu         sync.RWMutex
-	log        *zap.Logger
-	pq         jobs.Queue
-	pipeline   atomic.Pointer[jobs.Pipeline]
-	consumeAll bool
-	tracer     *sdktrace.TracerProvider
-	prop       propagation.TextMapPropagator
+	mu       sync.RWMutex
+	log      *zap.Logger
+	pq       jobs.Queue
+	pipeline atomic.Pointer[jobs.Pipeline]
+	tracer   *sdktrace.TracerProvider
+	prop     propagation.TextMapPropagator
 
 	// events
 	eventsCh chan events.Event
@@ -139,12 +138,11 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 	eventBus, id := events.NewEventBus()
 
 	jb := &Driver{
-		tracer:     tracer,
-		prop:       prop,
-		log:        log,
-		pq:         pq,
-		stopCh:     make(chan struct{}, 1),
-		consumeAll: conf.ConsumeAll,
+		tracer: tracer,
+		prop:   prop,
+		log:    log,
+		pq:     pq,
+		stopCh: make(chan struct{}, 1),
 
 		// events
 		eventsCh: eventsCh,
@@ -283,7 +281,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		notifyCloseStatCh:    make(chan *amqp.Error, 1),
 		notifyClosePubCh:     make(chan *amqp.Error, 1),
 
-		consumeAll:        pipeline.Bool(consumeAll, false),
 		routingKey:        pipeline.String(routingKey, ""),
 		queue:             pipeline.String(queue, ""),
 		exchangeType:      pipeline.String(exchangeType, "direct"),
