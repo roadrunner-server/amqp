@@ -199,6 +199,11 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		return nil, errors.E(op, err)
 	}
 
+	err = pch.Confirm(false)
+	if err != nil {
+		return nil, errors.E(op, fmt.Errorf("failed to turn on publisher confirms on the channel: %w", err))
+	}
+
 	stch, err := jb.conn.Channel()
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -334,6 +339,11 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	pch, err := jb.conn.Channel()
 	if err != nil {
 		return nil, errors.E(op, err)
+	}
+
+	err = pch.Confirm(false)
+	if err != nil {
+		return nil, errors.E(op, fmt.Errorf("failed to turn on publisher confirms on the channel: %w", err))
 	}
 
 	// channel to report amqp states
