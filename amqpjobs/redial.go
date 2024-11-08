@@ -1,6 +1,7 @@
 package amqpjobs
 
 import (
+	"fmt"
 	"sync/atomic"
 	"time"
 
@@ -255,6 +256,11 @@ func (d *Driver) redial(rm *redialMsg) {
 		pch, err := d.conn.Channel()
 		if err != nil {
 			return errors.E(op, err)
+		}
+
+		err = pch.Confirm(false)
+		if err != nil {
+			return errors.E(op, fmt.Errorf("failed to turn on publisher confirms on the channel: %w", err))
 		}
 
 		sch, err := d.conn.Channel()
