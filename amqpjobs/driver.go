@@ -199,6 +199,11 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		return nil, errors.E(op, err)
 	}
 
+	err = pch.Confirm(false)
+	if err != nil {
+		return nil, errors.E(op, fmt.Errorf("failed to turn on publisher confirms on the channel: %w", err))
+	}
+
 	stch, err := jb.conn.Channel()
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -334,6 +339,11 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	pch, err := jb.conn.Channel()
 	if err != nil {
 		return nil, errors.E(op, err)
+	}
+
+	err = pch.Confirm(false)
+	if err != nil {
+		return nil, errors.E(op, fmt.Errorf("failed to turn on publisher confirms on the channel: %w", err))
 	}
 
 	// channel to report amqp states
@@ -702,16 +712,26 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			return nil
 		}
 
-		err = pch.PublishWithContext(ctx, d.exchangeName, rk, false, false, amqp.Publishing{
+		dc, err := pch.PublishWithDeferredConfirmWithContext(ctx, d.exchangeName, rk, false, false, amqp.Publishing{
 			Headers:      table,
 			ContentType:  contentType,
 			Timestamp:    time.Now().UTC(),
 			DeliveryMode: amqp.Persistent,
 			Body:         msg.Body(),
 		})
-
 		if err != nil {
 			return errors.E(op, err)
+		}
+
+		ok, err := dc.WaitContext(ctx)
+		// if error is not nil, ok would be false
+		if err != nil {
+			return errors.E(op, fmt.Errorf("failed to get publisher confirm: %w", err))
+		}
+
+		// publish was unsuccessful
+		if !ok {
+			return errors.E(op, fmt.Errorf("failed to get publisher confirm"))
 		}
 
 		return nil
