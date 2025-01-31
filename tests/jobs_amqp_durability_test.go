@@ -39,7 +39,6 @@ func TestDurabilityAMQP(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-durability-redial.yaml",
-		Prefix:  "rr",
 	}
 
 	err = cont.RegisterAll(
@@ -134,7 +133,6 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-durability-no-queue.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)

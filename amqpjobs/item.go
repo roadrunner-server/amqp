@@ -2,12 +2,12 @@ package amqpjobs
 
 import (
 	"context"
+	"encoding/json"
 	stderr "errors"
 	"maps"
 	"sync/atomic"
 	"time"
 
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"

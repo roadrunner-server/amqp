@@ -2,6 +2,7 @@ package amqp
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log/slog"
@@ -19,7 +20,6 @@ import (
 	"tests/helpers"
 	mocklogger "tests/mock"
 
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	amqpDriver "github.com/roadrunner-server/amqp/v5"
@@ -48,7 +48,6 @@ func TestAMQPFanoutQueueName(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.1.3",
 		Path:    "configs/.rr-amqp-fanout.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -132,7 +131,6 @@ func TestAMQPHeaders(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2024.1.0",
 		Path:    "configs/.rr-amqp-headers.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -215,7 +213,6 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-xroutingkey.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -325,7 +322,6 @@ func TestAMQPDeclareHeaders(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2024.1.0",
 		Path:    "configs/.rr-amqp-headers-declare.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -415,7 +411,6 @@ func TestAMQPInitTLS(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.2.0",
 		Path:    "configs/.rr-amqp-init-tls.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -499,7 +494,6 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.2.0",
 		Path:    "configs/.rr-amqp-pq.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -586,7 +580,6 @@ func TestAMQP20Pipelines(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-parallel.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -695,7 +688,6 @@ func TestAMQPBug1792(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.7",
 		Path:    "configs/.rr-amqp-bug-1792.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -778,7 +770,6 @@ func TestAMQPInit(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.7",
 		Path:    "configs/.rr-amqp-init.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -860,7 +851,6 @@ func TestAMQPRoutingQueue(t *testing.T) {
 
 	cfg := &config.Plugin{
 		Path:    "configs/.rr-amqp-routing-queue.yaml",
-		Prefix:  "rr",
 		Version: "2024.1.0",
 	}
 
@@ -945,7 +935,6 @@ func TestAMQPReset(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-init.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1034,7 +1023,6 @@ func TestAMQPDeclare(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-declare.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1122,7 +1110,6 @@ func TestAMQPDeclareDurable(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-declare.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1210,7 +1197,6 @@ func TestAMQPJobsError(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-jobs-err.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1298,7 +1284,6 @@ func TestAMQPNoGlobalSection(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-no-global.yaml",
-		Prefix:  "rr",
 	}
 
 	err := cont.RegisterAll(
@@ -1329,7 +1314,6 @@ func TestAMQPStats(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-declare.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1452,7 +1436,6 @@ func TestAMQPBadResp(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-init-br.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1538,7 +1521,6 @@ func TestAMQPSlow(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.3.0",
 		Path:    "configs/.rr-amqp-slow.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1632,7 +1614,6 @@ func TestAMQPSlowAutoAck(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2024.1.0",
 		Path:    "configs/.rr-amqp-slow.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1729,7 +1710,6 @@ func TestAMQPRawPayload(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2024.1.0",
 		Path:    "configs/.rr-amqp-raw.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
@@ -1861,7 +1841,6 @@ func TestAMQPOTEL(t *testing.T) {
 	cfg := &config.Plugin{
 		Version: "2023.1.0",
 		Path:    "configs/.rr-amqp-otel.yaml",
-		Prefix:  "rr",
 	}
 
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)

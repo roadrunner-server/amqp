@@ -6,7 +6,6 @@ toolchain go1.23.4
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
-	github.com/goccy/go-json v0.10.5
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/roadrunner-server/api/v4 v4.18.1

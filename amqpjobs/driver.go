@@ -3,6 +3,7 @@ package amqpjobs
 import (
 	"context"
 	"crypto/tls"
+	"encoding/json"
 	stderr "errors"
 	"fmt"
 	"strconv"
@@ -10,7 +11,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/goccy/go-json"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
