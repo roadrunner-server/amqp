@@ -16,7 +16,7 @@ require (
 	github.com/roadrunner-server/informer/v5 v5.1.5
 	github.com/roadrunner-server/jobs/v5 v5.1.5
 	github.com/roadrunner-server/logger/v5 v5.1.5
-	github.com/roadrunner-server/metrics/v5 v5.1.4
+	github.com/roadrunner-server/metrics/v5 v5.1.5
 	github.com/roadrunner-server/otel/v5 v5.1.5
 	github.com/roadrunner-server/resetter/v5 v5.1.5
 	github.com/roadrunner-server/rpc/v5 v5.1.5
@@ -106,8 +106,8 @@ require (
 	golang.org/x/sys v0.30.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.10.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250219182151-9fdb1cabc7b2 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250219182151-9fdb1cabc7b2 // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250224174004-546df14abb99 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250224174004-546df14abb99 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
