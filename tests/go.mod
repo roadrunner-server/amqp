@@ -23,6 +23,7 @@ require (
 	github.com/roadrunner-server/server/v5 v5.2.7
 	github.com/stretchr/testify v1.10.0
 	go.uber.org/zap v1.27.0
+	google.golang.org/genproto v0.0.0-20250313205543-e70fdf4c4cb4
 )
 
 replace github.com/roadrunner-server/amqp/v5 => ../

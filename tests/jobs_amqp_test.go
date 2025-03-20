@@ -17,6 +17,8 @@ import (
 	"testing"
 	"time"
 
+	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
+
 	"tests/helpers"
 	mocklogger "tests/mock"
 
