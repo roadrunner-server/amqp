@@ -19,7 +19,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.35.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sys v0.32.0
-	google.golang.org/genproto v0.0.0-20250407143221-ac9807e6c755
+	google.golang.org/genproto v0.0.0-20250414145226-207652e42e2e
 )
 
 exclude (
