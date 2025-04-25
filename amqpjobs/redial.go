@@ -35,7 +35,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// exit on a graceful close
 				if closed && err == nil {
 					d.log.Debug("[notify close connection channel]: channel is closed")
-					continue
+					return
 				}
 
 				// stopped
@@ -60,7 +60,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// exit on a graceful close
 				if closed && err == nil {
 					d.log.Debug("[notify close consume channel]: channel is closed")
-					continue
+					return
 				}
 
 				// stopped
