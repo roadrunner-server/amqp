@@ -48,7 +48,6 @@ type Driver struct {
 	prop     propagation.TextMapPropagator
 
 	// events
-	eventsCh chan events.Event
 	eventBus *events.Bus
 	id       string
 
@@ -134,7 +133,6 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 	}
 	// PARSE CONFIGURATION END -------
 
-	eventsCh := make(chan events.Event, 1)
 	eventBus, id := events.NewEventBus()
 
 	jb := &Driver{
@@ -145,7 +143,6 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		stopCh: make(chan struct{}, 1),
 
 		// events
-		eventsCh: eventsCh,
 		eventBus: eventBus,
 		id:       id,
 
@@ -261,7 +258,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		log.Error("prefetch parse, driver will use default (10) prefetch", zap.String("prefetch", pipeline.String(prefetch, "10")))
 	}
 
-	eventsCh := make(chan events.Event, 1)
 	eventBus, id := events.NewEventBus()
 
 	jb := &Driver{
@@ -273,7 +269,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		delayed: ptrTo(int64(0)),
 
 		// events
-		eventsCh: eventsCh,
 		eventBus: eventBus,
 		id:       id,
 

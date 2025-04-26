@@ -336,7 +336,7 @@ func (d *Driver) redial(rm *redialMsg) {
 	if retryErr != nil {
 		d.log.Error("backoff operation failed, pipeline will be recreated", zap.Error(retryErr))
 		// recreate pipeline on fail
-		d.eventsCh <- events.NewEvent(events.EventJOBSDriverCommand, pipe.Name(), restartStr)
+		d.eventBus.Send(events.NewEvent(events.EventJOBSDriverCommand, pipe.Name(), restartStr))
 		return
 	}
 
