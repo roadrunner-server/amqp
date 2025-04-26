@@ -31,16 +31,17 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 	go func() {
 		for {
 			select {
-			case err := <-d.notifyCloseConnCh:
-				if err == nil {
-					d.log.Debug("exited from redialer")
+			case err, closed := <-d.notifyCloseConnCh:
+				// exit on a graceful close
+				if closed && err == nil {
+					d.log.Debug("[notify close connection channel]: channel is closed")
 					return
 				}
 
 				// stopped
 				if atomic.LoadUint64(&d.stopped) == 1 {
-					d.log.Debug("redialer stopped")
-					continue
+					d.log.Debug("[notify close connection channel]: channel is not closed, but driver is stopped")
+					return
 				}
 
 				select {
@@ -48,23 +49,24 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					t:   ConnCloseType,
 					err: err,
 				}:
-					d.log.Debug("exited from redialer")
+					d.log.Debug("[notify close connection channel]: redial message was sent")
 					return
 				default:
-					d.log.Debug("exited from redialer")
+					d.log.Debug("[notify close connection channel]: redial channel is full (or redial in progress)")
 					return
 				}
 
-			case err := <-d.notifyCloseConsumeCh:
-				if err == nil {
-					d.log.Debug("exited from redialer")
+			case err, closed := <-d.notifyCloseConsumeCh:
+				// exit on a graceful close
+				if closed && err == nil {
+					d.log.Debug("[notify close consume channel]: channel is closed")
 					return
 				}
 
 				// stopped
 				if atomic.LoadUint64(&d.stopped) == 1 {
-					d.log.Debug("redialer stopped")
-					continue
+					d.log.Debug("[notify close consume channel]: channel is not closed, but driver is stopped")
+					return
 				}
 
 				select {
@@ -72,23 +74,24 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					t:   ConsumeCloseType,
 					err: err,
 				}:
-					d.log.Debug("exited from redialer")
+					d.log.Debug("[notify close consume channel]: redial message was sent")
 					return
 				default:
-					d.log.Debug("exited from redialer")
+					d.log.Debug("[notify close consume channel]: channel is not closed, but driver is stopped")
 					return
 				}
 
-			case err := <-d.notifyClosePubCh:
-				if err == nil {
-					d.log.Debug("exited from redialer")
+			case err, closed := <-d.notifyClosePubCh:
+				// exit on a graceful close
+				if closed && err == nil {
+					d.log.Debug("[notify close publish channel]: channel is closed")
 					return
 				}
 
 				// stopped
 				if atomic.LoadUint64(&d.stopped) == 1 {
-					d.log.Debug("redialer stopped")
-					continue
+					d.log.Debug("[notify close publish channel]: channel is not closed, but driver is stopped")
+					return
 				}
 
 				select {
@@ -96,23 +99,23 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					t:   PublishCloseType,
 					err: err,
 				}:
-					d.log.Debug("exited from redialer")
+					d.log.Debug("[notify close publish channel]: redial message was sent")
 					return
 				default:
-					d.log.Debug("exited from redialer")
+					d.log.Debug("[notify close publish channel]: redial channel is full (or redial in progress)")
 					return
 				}
 
-			case err := <-d.notifyCloseStatCh:
-				if err == nil {
-					d.log.Debug("redialer stopped")
+			case err, closed := <-d.notifyCloseStatCh:
+				// exit on a graceful close
+				if closed && err == nil {
+					d.log.Debug("[notify close statistic channel]: channel is closed")
 					return
 				}
 
 				// stopped
 				if atomic.LoadUint64(&d.stopped) == 1 {
-					d.log.Debug("redialer stopped")
-					continue
+					d.log.Debug("[notify close statistic channel]: channel is not closed, but driver is stopped")
 				}
 
 				select {
@@ -120,10 +123,10 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					t:   StatCloseType,
 					err: err,
 				}:
-					d.log.Debug("redialer stopped")
+					d.log.Debug("[notify close statistic channel]: redial message was sent")
 					return
 				default:
-					d.log.Debug("redialer stopped")
+					d.log.Debug("[notify close statistic channel]: redialer stopped")
 					return
 				}
 
@@ -165,14 +168,14 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					d.log.Error("state channel close", zap.Error(err))
 				}
 
-				if d.consumeChan != nil {
+				if d.consumeChan != nil && !d.consumeChan.IsClosed() {
 					err = d.consumeChan.Close()
 					if err != nil {
 						d.log.Error("consume channel close", zap.Error(err))
 					}
 				}
 
-				if d.conn != nil {
+				if d.conn != nil && !d.conn.IsClosed() {
 					err = d.conn.Close()
 					if err != nil {
 						d.log.Error("amqp connection closed", zap.Error(err))
@@ -186,6 +189,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 }
 
 func (d *Driver) reset() {
+	d.log.Debug("resetting connection on redial")
 	pch := <-d.publishChan
 	stCh := <-d.stateChan
 
@@ -205,12 +209,14 @@ func (d *Driver) reset() {
 		}
 	}
 
-	if d.conn != nil {
+	if d.conn != nil && !d.conn.IsClosed() {
 		err = d.conn.Close()
 		if err != nil {
 			d.log.Error("amqp connection closed", zap.Error(err))
 		}
 	}
+
+	d.log.Debug("connection was closed")
 }
 
 func (d *Driver) redialMergeCh() {
@@ -225,7 +231,7 @@ func (d *Driver) redialMergeCh() {
 
 func (d *Driver) redial(rm *redialMsg) {
 	const op = errors.Op("amqp_driver_redial")
-	// trash the broken publishing channel
+	// trash the broken publishing channels, close the connection
 	d.reset()
 
 	t := time.Now().UTC()
