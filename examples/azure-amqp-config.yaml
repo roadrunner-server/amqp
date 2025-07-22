@@ -1,0 +1,58 @@
+version: "2024.1.0"
+
+server:
+  command: "php worker.php"
+  relay: "pipes"
+  relay_timeout: "20s"
+
+logs:
+  level: debug
+
+# Azure AMQP 1.0 configuration
+jobs:
+  pipelines:
+    azure-amqp:
+      driver: azure-amqp
+      config:
+        # AMQP 1.0 connection string
+        connection_string: "amqp://guest:guest@localhost:5672/"
+        
+        # AMQP 1.0 address (replaces queue/exchange concept)
+        address: "jobs"
+        
+        # Number of messages to prefetch
+        prefetch: 10
+        
+        # Message priority
+        priority: 10
+        
+        # Auto-acknowledge messages (set to false for manual ack)
+        auto_ack: false
+        
+        # Requeue messages on failure
+        requeue_on_fail: true
+
+    # Example for Azure Service Bus
+    azure-service-bus:
+      driver: azure-amqp
+      config:
+        # Azure Service Bus connection string
+        connection_string: "amqps://your-namespace.servicebus.windows.net"
+        
+        # Queue or topic name
+        address: "your-queue-name"
+        
+        prefetch: 20
+        priority: 5
+        auto_ack: false
+        requeue_on_fail: true
+
+  # Global job settings
+  pool:
+    num_workers: 2
+    max_jobs: 0
+    allocate_timeout: 60s
+    destroy_timeout: 60s
+
+  # Consumer settings
+  consume: ["azure-amqp", "azure-service-bus"]

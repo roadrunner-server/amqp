@@ -18,12 +18,11 @@ import (
 	"time"
 
 	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
-
 	"tests/helpers"
 	mocklogger "tests/mock"
 
+	"github.com/Azure/go-amqp"
 	"github.com/google/uuid"
-	amqp "github.com/rabbitmq/amqp091-go"
 	amqpDriver "github.com/roadrunner-server/amqp/v5"
 	jobsProto "github.com/roadrunner-server/api/v4/build/jobs/v1"
 	jobsState "github.com/roadrunner-server/api/v4/plugins/v1/jobs"

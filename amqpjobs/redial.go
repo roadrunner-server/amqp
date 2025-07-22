@@ -5,8 +5,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/cenkalti/backoff/v4"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/cenkalti/backoff/v4"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
 	"go.uber.org/zap"
@@ -23,7 +23,7 @@ const (
 
 type redialMsg struct {
 	t   string
-	err *amqp.Error
+	err error
 }
 
 // redialer used to redial to the server in case of the connection interrupts

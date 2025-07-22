@@ -1,0 +1,69 @@
+version: "2024.1.0"
+
+server:
+  command: "php worker.php"
+  relay: "pipes"
+  relay_timeout: "20s"
+
+logs:
+  level: debug
+
+# Hybrid configuration showing both AMQP drivers
+jobs:
+  pipelines:
+    # Traditional RabbitMQ AMQP 0.9.1 pipeline
+    rabbitmq:
+      driver: amqp
+      config:
+        addr: "amqp://guest:guest@localhost:5672/"
+        queue: "traditional_jobs"
+        exchange: "amqp.default"
+        exchange_type: "direct"
+        routing_key: "jobs"
+        prefetch: 10
+        durable: true
+        auto_ack: false
+        requeue_on_fail: true
+        
+    # Azure Service Bus AMQP 1.0 pipeline
+    azure-service-bus:
+      driver: azure-amqp
+      config:
+        connection_string: "amqps://your-namespace.servicebus.windows.net"
+        address: "cloud_jobs"
+        prefetch: 20
+        priority: 5
+        auto_ack: false
+        requeue_on_fail: true
+
+    # Local ActiveMQ Artemis AMQP 1.0 pipeline  
+    artemis:
+      driver: azure-amqp
+      config:
+        connection_string: "amqp://admin:admin@localhost:61616/"
+        address: "artemis_jobs"
+        prefetch: 15
+        priority: 3
+        auto_ack: false
+        requeue_on_fail: true
+
+    # High-priority Azure Service Bus queue
+    priority-queue:
+      driver: azure-amqp
+      config:
+        connection_string: "amqps://your-namespace.servicebus.windows.net"
+        address: "priority_jobs"
+        prefetch: 5
+        priority: 10
+        auto_ack: false
+        requeue_on_fail: false  # Don't requeue priority jobs
+
+  # Global job settings
+  pool:
+    num_workers: 4
+    max_jobs: 0
+    allocate_timeout: 60s
+    destroy_timeout: 60s
+
+  # Consumer settings - consume from multiple pipelines
+  consume: ["rabbitmq", "azure-service-bus", "artemis", "priority-queue"]

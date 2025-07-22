@@ -11,8 +11,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
+	"github.com/google/uuid"
 	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
@@ -51,23 +51,27 @@ type Driver struct {
 	eventBus *events.Bus
 	id       string
 
-	// amqp connection notifiers
-	notifyCloseConnCh    chan *amqp.Error
-	notifyClosePubCh     chan *amqp.Error
-	notifyCloseConsumeCh chan *amqp.Error
-	notifyCloseStatCh    chan *amqp.Error
-	redialCh             chan *redialMsg
+	// amqp connection components
+	conn         *amqp.Connection
+	publishChan  chan *amqp.Channel
+	consumeChan  *amqp.Channel
+	stateChan    chan *amqp.Channel
+	redialCh     chan *redialMsg
+	connStr      string
 
-	conn        *amqp.Connection
-	consumeChan *amqp.Channel
-	stateChan   chan *amqp.Channel
-	publishChan chan *amqp.Channel
-	consumeID   string
-	connStr     string
+	// notification channels  
+	notifyCloseConsumeCh chan *amqp.Error
+	notifyCloseConnCh    chan *amqp.Error
+	notifyCloseStatCh    chan *amqp.Error
+	notifyClosePubCh     chan *amqp.Error
+
+	// consumer ID
+	consumeID string
 
 	retryTimeout      time.Duration
 	prefetch          int
 	priority          int64
+	// connection settings
 	exchangeName      string
 	queue             string
 	exclusive         bool
@@ -78,13 +82,12 @@ type Driver struct {
 	durable           bool
 	deleteQueueOnStop bool
 
-	// new in 2.12
+	// Note: Some AMQP 0.9.1 concepts don't directly translate to AMQP 1.0
+	// These may need to be handled differently or removed
 	exchangeDurable    bool
 	exchangeAutoDelete bool
 	queueAutoDelete    bool
-
-	// new in 2.12.2
-	queueHeaders map[string]any
+	queueHeaders       map[string]any
 
 	listeners uint32
 	delayed   *int64
@@ -736,29 +739,19 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 }
 
 func dial(addr string, amqps *config) (*amqp.Connection, error) {
-	// use non-tls connection
-	if amqps.TLS == nil {
-		conn, err := amqp.Dial(addr)
+	if amqps.TLS != nil {
+		cfg := &tls.Config{
+			MinVersion: tls.VersionTLS12,
+		}
+		err := initTLS(amqps.TLS, cfg)
 		if err != nil {
 			return nil, err
 		}
-		return conn, nil
+
+		return amqp.DialTLS(addr, cfg)
 	}
 
-	tlsCfg := &tls.Config{
-		MinVersion: tls.VersionTLS12,
-	}
-	err := initTLS(amqps.TLS, tlsCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	conn, err := amqp.DialTLS(addr, tlsCfg)
-	if err != nil {
-		return nil, err
-	}
-
-	return conn, nil
+	return amqp.Dial(addr)
 }
 
 func ready(r uint32) bool {

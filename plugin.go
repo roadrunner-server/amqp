@@ -12,7 +12,10 @@ import (
 	"go.uber.org/zap"
 )
 
-const pluginName string = "amqp"
+const (
+	pluginName      string = "amqp"       // Original AMQP 0.9.1 driver
+	azurePluginName string = "azure-amqp" // New Azure AMQP 1.0 driver
+)
 
 type Configurer interface {
 	// UnmarshalKey takes a single key and unmarshal it into a Struct.
@@ -65,4 +68,49 @@ func (p *Plugin) DriverFromConfig(configKey string, pq jobs.Queue, pipeline jobs
 // DriverFromPipeline constructs amqp driver from pipeline
 func (p *Plugin) DriverFromPipeline(pipe jobs.Pipeline, pq jobs.Queue) (jobs.Driver, error) {
 	return amqpjobs.FromPipeline(p.tracer, pipe, p.log, p.cfg, pq)
+}
+
+// AzurePlugin represents the Azure AMQP 1.0 plugin
+type AzurePlugin struct {
+	cfg    Configurer
+	log    *zap.Logger
+	tracer *sdktrace.TracerProvider
+}
+
+// Init initializes the Azure AMQP plugin
+func (ap *AzurePlugin) Init(cfg Configurer, log Logger) error {
+	const op = errors.Op("azure_amqp_plugin_init")
+
+	if !cfg.Has(azurePluginName) {
+		return errors.E(op, errors.Disabled)
+	}
+
+	ap.cfg = cfg
+	ap.log = log.NamedLogger(azurePluginName)
+
+	return nil
+}
+
+// Name returns the Azure plugin name
+func (ap *AzurePlugin) Name() string {
+	return azurePluginName
+}
+
+// Collects dependencies for the Azure plugin
+func (ap *AzurePlugin) Collects() []*dep.In {
+	return []*dep.In{
+		dep.Fits(func(pp any) {
+			ap.tracer = pp.(Tracer).Tracer()
+		}, (*Tracer)(nil)),
+	}
+}
+
+// DriverFromConfig constructs Azure AMQP driver from configuration
+func (ap *AzurePlugin) DriverFromConfig(configKey string, pq jobs.Queue, pipeline jobs.Pipeline) (jobs.Driver, error) {
+	return amqpjobs.FromAzureConfig(ap.tracer, configKey, ap.log, ap.cfg, pipeline, pq)
+}
+
+// DriverFromPipeline constructs Azure AMQP driver from pipeline
+func (ap *AzurePlugin) DriverFromPipeline(pipe jobs.Pipeline, pq jobs.Queue) (jobs.Driver, error) {
+	return amqpjobs.FromAzurePipeline(ap.tracer, pipe, ap.log, ap.cfg, pq)
 }

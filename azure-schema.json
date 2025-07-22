@@ -1,0 +1,123 @@
+{
+  "$id": "https://raw.githubusercontent.com/roadrunner-server/amqp/refs/heads/master/azure-schema.json",
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "title": "roadrunner-azure-amqp",
+  "description": "Schema for Azure AMQP 1.0 driver configuration for RoadRunner job system.",
+  "definitions": {
+    "azure-pipeline": {
+      "type": "object",
+      "required": [
+        "driver"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "driver": {
+          "type": "string",
+          "enum": [
+            "azure-amqp"
+          ]
+        },
+        "config": {
+          "type": "object",
+          "additionalProperties": false,
+          "description": "Configuration options for the Azure AMQP 1.0 pipeline.",
+          "properties": {
+            "connection_string": {
+              "type": "string",
+              "description": "AMQP 1.0 connection string for the broker (e.g., Azure Service Bus, ActiveMQ Artemis)",
+              "examples": [
+                "amqp://guest:guest@localhost:5672/",
+                "amqps://your-namespace.servicebus.windows.net",
+                "amqp://admin:admin@artemis:61616/"
+              ]
+            },
+            "address": {
+              "type": "string",
+              "description": "AMQP 1.0 address (queue/topic name). Replaces the exchange/queue/routing_key concept from AMQP 0.9.1",
+              "examples": [
+                "jobs",
+                "my-queue",
+                "topic://my-topic"
+              ]
+            },
+            "prefetch": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000,
+              "default": 10,
+              "description": "Number of messages to prefetch from the broker"
+            },
+            "priority": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 256,
+              "default": 0,
+              "description": "Default message priority"
+            },
+            "auto_ack": {
+              "type": "boolean",
+              "default": false,
+              "description": "Automatically acknowledge messages upon receipt (not recommended for critical workloads)"
+            },
+            "requeue_on_fail": {
+              "type": "boolean",
+              "default": true,
+              "description": "Requeue messages when processing fails"
+            }
+          },
+          "required": [
+            "connection_string",
+            "address"
+          ]
+        }
+      }
+    }
+  },
+  "type": "object",
+  "properties": {
+    "azure-amqp": {
+      "$ref": "#/definitions/azure-pipeline"
+    }
+  },
+  "examples": [
+    {
+      "azure-amqp": {
+        "driver": "azure-amqp",
+        "config": {
+          "connection_string": "amqp://guest:guest@localhost:5672/",
+          "address": "jobs",
+          "prefetch": 10,
+          "priority": 0,
+          "auto_ack": false,
+          "requeue_on_fail": true
+        }
+      }
+    },
+    {
+      "azure-service-bus": {
+        "driver": "azure-amqp", 
+        "config": {
+          "connection_string": "amqps://your-namespace.servicebus.windows.net",
+          "address": "your-queue-name",
+          "prefetch": 20,
+          "priority": 5,
+          "auto_ack": false,
+          "requeue_on_fail": true
+        }
+      }
+    },
+    {
+      "artemis": {
+        "driver": "azure-amqp",
+        "config": {
+          "connection_string": "amqp://admin:admin@artemis:61616/",
+          "address": "artemis.jobs",
+          "prefetch": 15,
+          "priority": 3,
+          "auto_ack": false,
+          "requeue_on_fail": true
+        }
+      }
+    }
+  ]
+}
