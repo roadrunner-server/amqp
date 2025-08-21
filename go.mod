@@ -19,7 +19,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.37.0
 	go.uber.org/zap v1.27.0
 	golang.org/x/sys v0.35.0
-	google.golang.org/genproto v0.0.0-20250811230008-5f3141c8851a
+	google.golang.org/genproto v0.0.0-20250818200422-3122310a409c
 )
 
 exclude (
@@ -35,6 +35,6 @@ require (
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/otel/metric v1.37.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
-	google.golang.org/protobuf v1.36.7 // indirect
+	google.golang.org/protobuf v1.36.8 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
