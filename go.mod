@@ -2,13 +2,13 @@ module github.com/roadrunner-server/amqp/v5
 
 go 1.25
 
-toolchain go1.25.3
+toolchain go1.25.4
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
-	github.com/roadrunner-server/api/v4 v4.22.1
+	github.com/roadrunner-server/api/v4 v4.23.0
 	github.com/roadrunner-server/endure/v2 v2.6.2
 	github.com/roadrunner-server/errors v1.4.1
 	github.com/roadrunner-server/events v1.0.1
@@ -17,9 +17,9 @@ require (
 	go.opentelemetry.io/otel v1.38.0
 	go.opentelemetry.io/otel/sdk v1.38.0
 	go.opentelemetry.io/otel/trace v1.38.0
-	go.uber.org/zap v1.27.0
-	golang.org/x/sys v0.37.0
-	google.golang.org/genproto v0.0.0-20251022142026-3a174f9686a8
+	go.uber.org/zap v1.27.1
+	golang.org/x/sys v0.38.0
+	google.golang.org/genproto v0.0.0-20251111163417-95abcf5c77ba
 )
 
 exclude (
