@@ -2,7 +2,7 @@ module github.com/roadrunner-server/amqp/v5
 
 go 1.25
 
-toolchain go1.25.4
+toolchain go1.25.5
 
 require (
 	github.com/cenkalti/backoff/v4 v4.3.0
@@ -19,7 +19,7 @@ require (
 	go.opentelemetry.io/otel/trace v1.38.0
 	go.uber.org/zap v1.27.1
 	golang.org/x/sys v0.38.0
-	google.golang.org/genproto v0.0.0-20251111163417-95abcf5c77ba
+	google.golang.org/genproto v0.0.0-20251124214823-79d6a2a48846
 )
 
 exclude (
