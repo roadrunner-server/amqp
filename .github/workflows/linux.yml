@@ -79,32 +79,11 @@ jobs:
           sleep 30
 
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/amqp.out -covermode=atomic jobs_amqp_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/summary.txt -covermode=atomic jobs_amqp_test.go
           docker compose -f env/docker-compose-amqp.yaml down
 
-      - name: Archive code coverage results
-        uses: actions/upload-artifact@v6
-        with:
-          name: coverage
-          path: ./tests/coverage-ci/amqp.out
-
-  codecov:
-    name: Upload codecov
-    runs-on: ubuntu-latest
-    needs:
-      - amqp_test
-
-    timeout-minutes: 60
-    steps:
-      - name: Download code coverage results
-        uses: actions/download-artifact@v7
-      - run: |
-          echo 'mode: atomic' > summary.txt
-          tail -q -n +2 *.out >> summary.txt
-          sed -i '2,${/roadrunner/!d}' summary.txt
-
-      - name: upload to codecov
+      - name: Upload to codecov
         uses: codecov/codecov-action@v5 # Docs: <https://github.com/codecov/codecov-action>
         with:
-          files: summary.txt
+          files: ./coverage-ci/summary.txt
           fail_ci_if_error: false
