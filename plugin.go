@@ -1,3 +1,7 @@
+// Package amqp provides a RoadRunner plugin for AMQP (Advanced Message Queuing Protocol) integration.
+// It enables RoadRunner's jobs system to use RabbitMQ or other AMQP-compatible message brokers
+// as a backend for asynchronous job processing, supporting features like message persistence,
+// routing, and reliable delivery.
 package amqp
 
 import (

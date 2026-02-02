@@ -1,3 +1,6 @@
+// Package amqpjobs implements the AMQP driver for RoadRunner's jobs plugin.
+// It provides job queue operations including message publishing, consuming, acknowledgment,
+// and automatic reconnection handling for RabbitMQ and other AMQP 0-9-1 compatible brokers.
 package amqpjobs
 
 import (
