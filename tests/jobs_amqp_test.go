@@ -557,7 +557,7 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 	}()
 
 	time.Sleep(time.Second * 3)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		t.Run("PushToPipelineTest1PQ", helpers.PushToPipe("test-1-pq", false, "127.0.0.1:6601"))
 		t.Run("PushToPipelineTest2PQ", helpers.PushToPipe("test-2-pq", false, "127.0.0.1:6601"))
 	}
@@ -1587,7 +1587,7 @@ func TestAMQPSlow(t *testing.T) {
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second * 40)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
 	}
 	time.Sleep(time.Second * 80)

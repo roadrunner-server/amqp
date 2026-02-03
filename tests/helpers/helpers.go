@@ -32,7 +32,7 @@ func ResumePipes(address string, pipes ...string) func(t *testing.T) {
 
 		pipe := &jobsProto.Pipelines{Pipelines: make([]string, len(pipes))}
 
-		for i := 0; i < len(pipes); i++ {
+		for i := range pipes {
 			pipe.GetPipelines()[i] = pipes[i]
 		}
 
@@ -103,7 +103,7 @@ func PausePipelines(address string, pipes ...string) func(t *testing.T) {
 
 		pipe := &jobsProto.Pipelines{Pipelines: make([]string, len(pipes))}
 
-		for i := 0; i < len(pipes); i++ {
+		for i := range pipes {
 			pipe.GetPipelines()[i] = pipes[i]
 		}
 
@@ -121,11 +121,11 @@ func DestroyPipelines(address string, pipes ...string) func(t *testing.T) {
 
 		pipe := &jobsProto.Pipelines{Pipelines: make([]string, len(pipes))}
 
-		for i := 0; i < len(pipes); i++ {
+		for i := range pipes {
 			pipe.GetPipelines()[i] = pipes[i]
 		}
 
-		for i := 0; i < 10; i++ {
+		for range 10 {
 			er := &jobsProto.Empty{}
 			err = client.Call(destroy, pipe, er)
 			if err != nil {
