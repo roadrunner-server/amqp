@@ -11,7 +11,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
-	"sort"
+	"slices"
 	"sync"
 	"syscall"
 	"testing"
@@ -292,7 +292,8 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 		},
 	}
 
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	var d net.Dialer
+	conn, err := d.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
 	require.NoError(t, err)
 	client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -557,7 +558,7 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 	}()
 
 	time.Sleep(time.Second * 3)
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		t.Run("PushToPipelineTest1PQ", helpers.PushToPipe("test-1-pq", false, "127.0.0.1:6601"))
 		t.Run("PushToPipelineTest2PQ", helpers.PushToPipe("test-2-pq", false, "127.0.0.1:6601"))
 	}
@@ -1587,7 +1588,7 @@ func TestAMQPSlow(t *testing.T) {
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second * 40)
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
 	}
 	time.Sleep(time.Second * 80)
@@ -1922,11 +1923,7 @@ func TestAMQPOTEL(t *testing.T) {
 	var spans []string
 	err = json.Unmarshal(buf, &spans)
 	assert.NoError(t, err)
-
-	sort.Slice(spans, func(i, j int) bool {
-		return spans[i] < spans[j]
-	})
-
+	slices.Sort(spans)
 	expected := []string{
 		"amqp_listener",
 		"amqp_push",

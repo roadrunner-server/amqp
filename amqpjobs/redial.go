@@ -137,9 +137,9 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				stCh := <-d.stateChan
 
 				// cancel new deliveries
-				err := pch.Cancel(d.consumeID, false)
+				err := pch.Cancel(d.config.Load().ConsumerID, false)
 				if err != nil {
-					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.consumeID))
+					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.config.Load().ConsumerID))
 				}
 
 				// wait for the listener to stop
@@ -150,9 +150,9 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// remove the items associated with that pipeline from the priority_queue
 				_ = d.pq.Remove((*d.pipeline.Load()).Name())
 
-				if d.deleteQueueOnStop {
+				if d.config.Load().DeleteQueueOnStop {
 					var n int
-					n, err = pch.QueueDelete(d.queue, false, false, false)
+					n, err = pch.QueueDelete(d.config.Load().Queue, false, false, false)
 					if err != nil {
 						d.log.Error("queue delete", zap.Error(err))
 					}
@@ -241,10 +241,10 @@ func (d *Driver) redial(rm *redialMsg) {
 
 	expb := backoff.NewExponentialBackOff()
 	// set the retry timeout (minutes)
-	expb.MaxElapsedTime = d.retryTimeout
+	expb.MaxElapsedTime = time.Duration(d.config.Load().RedialTimeout) * time.Second
 	operation := func() error {
 		var err error
-		d.conn, err = amqp.Dial(d.connStr)
+		d.conn, err = dial(d.config.Load().Addr, d.config.Load())
 		if err != nil {
 			return errors.E(op, err)
 		}
@@ -295,7 +295,7 @@ func (d *Driver) redial(rm *redialMsg) {
 				return errors.E(op, err)
 			}
 
-			err = d.consumeChan.Qos(d.prefetch, 0, false)
+			err = d.consumeChan.Qos(d.config.Load().Prefetch, 0, false)
 			if err != nil {
 				d.log.Error("QOS", zap.Error(err))
 				return errors.E(op, err)
@@ -303,8 +303,8 @@ func (d *Driver) redial(rm *redialMsg) {
 
 			// start reading messages from the channel
 			deliv, err := d.consumeChan.Consume(
-				d.queue,
-				d.consumeID,
+				d.config.Load().Queue,
+				d.config.Load().ConsumerID,
 				false,
 				false,
 				false,

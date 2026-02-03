@@ -105,19 +105,23 @@ func (c *config) InitDefault() error {
 		c.ExchangeType = "direct"
 	}
 
+	if err := validateExchangeType(c.ExchangeType); err != nil {
+		return errors.E(op, err)
+	}
+
 	if c.Exchange == "" {
 		c.Exchange = "amqp.default"
 	}
 
-	if c.RedialTimeout == 0 {
+	if c.RedialTimeout <= 0 {
 		c.RedialTimeout = 60
 	}
 
-	if c.Prefetch == 0 {
+	if c.Prefetch <= 0 {
 		c.Prefetch = 10
 	}
 
-	if c.Priority == 0 {
+	if c.Priority <= 0 {
 		c.Priority = 10
 	}
 
@@ -130,50 +134,68 @@ func (c *config) InitDefault() error {
 	}
 
 	if c.enableTLS() {
-		if _, err := os.Stat(c.TLS.Key); err != nil {
-			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
-			}
-
-			return errors.E(op, err)
-		}
-
-		if _, err := os.Stat(c.TLS.Cert); err != nil {
-			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
-			}
-
-			return errors.E(op, err)
-		}
-
-		// RootCA is optional, but if provided - check it
-		if c.TLS.RootCA != "" {
-			if _, err := os.Stat(c.TLS.RootCA); err != nil {
-				if os.IsNotExist(err) {
-					return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
-				}
-				return errors.E(op, err)
-			}
-
-			// auth type used only for the CA
-			switch c.TLS.AuthType {
-			case NoClientCert:
-				c.TLS.auth = tls.NoClientCert
-			case RequestClientCert:
-				c.TLS.auth = tls.RequestClientCert
-			case RequireAnyClientCert:
-				c.TLS.auth = tls.RequireAnyClientCert
-			case VerifyClientCertIfGiven:
-				c.TLS.auth = tls.VerifyClientCertIfGiven
-			case RequireAndVerifyClientCert:
-				c.TLS.auth = tls.RequireAndVerifyClientCert
-			default:
-				c.TLS.auth = tls.NoClientCert
-			}
+		if err := c.validateTLS(op); err != nil {
+			return err
 		}
 	}
 
 	return nil
+}
+
+func (c *config) validateTLS(op errors.Op) error {
+	if _, err := os.Stat(c.TLS.Key); err != nil {
+		if os.IsNotExist(err) {
+			return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
+		}
+
+		return errors.E(op, err)
+	}
+
+	if _, err := os.Stat(c.TLS.Cert); err != nil {
+		if os.IsNotExist(err) {
+			return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+		}
+
+		return errors.E(op, err)
+	}
+
+	// RootCA is optional, but if provided - check it
+	if c.TLS.RootCA != "" {
+		if _, err := os.Stat(c.TLS.RootCA); err != nil {
+			if os.IsNotExist(err) {
+				return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
+			}
+			return errors.E(op, err)
+		}
+
+		// auth type used only for the CA
+		switch c.TLS.AuthType {
+		case NoClientCert:
+			c.TLS.auth = tls.NoClientCert
+		case RequestClientCert:
+			c.TLS.auth = tls.RequestClientCert
+		case RequireAnyClientCert:
+			c.TLS.auth = tls.RequireAnyClientCert
+		case VerifyClientCertIfGiven:
+			c.TLS.auth = tls.VerifyClientCertIfGiven
+		case RequireAndVerifyClientCert:
+			c.TLS.auth = tls.RequireAndVerifyClientCert
+		default:
+			c.TLS.auth = tls.NoClientCert
+		}
+	}
+
+	return nil
+}
+
+// validateExchangeType checks that the exchange type is a valid AMQP exchange type.
+func validateExchangeType(t string) error {
+	switch t {
+	case "direct", "fanout", "topic", "headers":
+		return nil
+	default:
+		return errors.Errorf("invalid exchange type %q, must be one of: direct, fanout, topic, headers", t)
+	}
 }
 
 func (c *config) enableTLS() bool {
