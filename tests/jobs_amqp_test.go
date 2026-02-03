@@ -11,6 +11,7 @@ import (
 	"net/rpc"
 	"os"
 	"os/signal"
+	"slices"
 	"sort"
 	"sync"
 	"syscall"
@@ -1922,11 +1923,7 @@ func TestAMQPOTEL(t *testing.T) {
 	var spans []string
 	err = json.Unmarshal(buf, &spans)
 	assert.NoError(t, err)
-
-	sort.Slice(spans, func(i, j int) bool {
-		return spans[i] < spans[j]
-	})
-
+	slices.Sort(spans)
 	expected := []string{
 		"amqp_listener",
 		"amqp_push",
