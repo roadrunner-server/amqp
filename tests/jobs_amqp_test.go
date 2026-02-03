@@ -292,7 +292,8 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 		},
 	}
 
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	var d net.Dialer
+	conn, err := d.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
 	require.NoError(t, err)
 	client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
