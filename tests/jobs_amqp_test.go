@@ -12,7 +12,6 @@ import (
 	"os"
 	"os/signal"
 	"slices"
-	"sort"
 	"sync"
 	"syscall"
 	"testing"
