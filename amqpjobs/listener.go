@@ -34,13 +34,11 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 		}
 
 		d.log.Debug("delivery channel was closed, leaving the AMQP listener")
-		// reduce the number of listeners
-		if atomic.LoadUint32(&d.listeners) == 0 {
-			d.log.Debug("number of listeners", zap.Uint32("listeners", atomic.LoadUint32(&d.listeners)))
-			return
+		// atomically try to decrement the listener counter; if already 0 (e.g., Pause did it), skip
+		if atomic.CompareAndSwapUint32(&d.listeners, 1, 0) {
+			d.log.Debug("listener decremented", zap.Uint32("listeners", 0))
+		} else {
+			d.log.Debug("listener already stopped", zap.Uint32("listeners", atomic.LoadUint32(&d.listeners)))
 		}
-
-		atomic.AddUint32(&d.listeners, ^uint32(0))
-		d.log.Debug("number of listeners", zap.Uint32("listeners", atomic.LoadUint32(&d.listeners)))
 	}()
 }

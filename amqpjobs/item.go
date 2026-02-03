@@ -266,15 +266,16 @@ func pack(id string, j *Item) (amqp.Table, error) {
 
 // unpack restores jobs.Options
 func (d *Driver) unpack(deliv amqp.Delivery) *Item {
+	conf := d.config.Load()
 	item := &Item{
 		headers: convHeaders(deliv.Headers, d.log),
 		Payload: deliv.Body,
 		Options: &Options{
 			Pipeline:    (*d.pipeline.Load()).Name(),
-			Queue:       d.queue,
+			Queue:       conf.Queue,
 			requeueFn:   d.handleItem,
-			multipleAck: d.multipleAck,
-			requeue:     d.requeueOnFail,
+			multipleAck: conf.MultipleAck,
+			requeue:     conf.RequeueOnFail,
 		},
 	}
 
@@ -320,11 +321,17 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 
 	if t, ok := deliv.Headers[jobs.RRPriority]; !ok {
 		// set pipe's priority
-		item.Options.Priority = d.priority
+		item.Options.Priority = d.config.Load().Priority
 	} else {
-		switch t.(type) {
-		case int, int16, int32, int64:
-			item.Options.Priority = t.(int64)
+		switch tt := t.(type) {
+		case int:
+			item.Options.Priority = int64(tt)
+		case int16:
+			item.Options.Priority = int64(tt)
+		case int32:
+			item.Options.Priority = int64(tt)
+		case int64:
+			item.Options.Priority = tt
 		default:
 			d.log.Warn("unknown priority type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
 		}
