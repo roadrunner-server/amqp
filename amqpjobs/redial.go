@@ -241,7 +241,7 @@ func (d *Driver) redial(rm *redialMsg) {
 
 	expb := backoff.NewExponentialBackOff()
 	// set the retry timeout (minutes)
-	expb.MaxElapsedTime = time.Duration(d.config.Load().RedialTimeout)
+	expb.MaxElapsedTime = time.Duration(d.config.Load().RedialTimeout) * time.Second
 	operation := func() error {
 		var err error
 		d.conn, err = dial(d.config.Load().Addr, d.config.Load())
