@@ -22,11 +22,14 @@ import (
 	"tests/helpers"
 	mocklogger "tests/mock"
 
+	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	amqpDriver "github.com/roadrunner-server/amqp/v5"
+	amqpjobs "github.com/roadrunner-server/amqp/v5/amqpjobs"
 	jobsProto "github.com/roadrunner-server/api/v4/build/jobs/v1"
 	jobsState "github.com/roadrunner-server/api/v4/plugins/v1/jobs"
+	apiJobs "github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/config/v5"
 	"github.com/roadrunner-server/endure/v2"
 	goridgeRpc "github.com/roadrunner-server/goridge/v3/pkg/rpc"
@@ -42,6 +45,158 @@ import (
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
 )
+
+type mockConfigurer struct {
+	has    map[string]bool
+	values map[string]any
+	errs   map[string]error
+}
+
+func (m *mockConfigurer) Has(name string) bool {
+	return m.has[name]
+}
+
+func (m *mockConfigurer) UnmarshalKey(name string, out any) error {
+	if err, ok := m.errs[name]; ok {
+		return err
+	}
+
+	val, ok := m.values[name]
+	if !ok {
+		return nil
+	}
+
+	return mapstructure.Decode(val, out)
+}
+
+func TestFromConfigValidationErrors(t *testing.T) {
+	const configKey = "jobs.pipelines.test"
+	pipe := jobs.Pipeline{
+		"name":   "test",
+		"driver": "amqp",
+	}
+
+	missingKey := fmt.Sprintf("/tmp/rr-amqp-missing-%s.key", uuid.NewString())
+	missingCert := fmt.Sprintf("/tmp/rr-amqp-missing-%s.pem", uuid.NewString())
+
+	tests := []struct {
+		name        string
+		cfg         *mockConfigurer
+		errContains string
+	}{
+		{
+			name: "missing pipeline configuration key",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					"amqp": true,
+				},
+			},
+			errContains: "no configuration by provided key",
+		},
+		{
+			name: "missing global amqp section",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					configKey: true,
+				},
+			},
+			errContains: "no global amqp configuration",
+		},
+		{
+			name: "invalid exchange type",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					configKey: true,
+					"amqp":    true,
+				},
+				values: map[string]any{
+					configKey: map[string]any{
+						"exchange_type": "invalid",
+					},
+					"amqp": map[string]any{},
+				},
+			},
+			errContains: "invalid exchange type",
+		},
+		{
+			name: "missing tls key cert files",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					configKey: true,
+					"amqp":    true,
+				},
+				values: map[string]any{
+					configKey: map[string]any{},
+					"amqp": map[string]any{
+						"tls": map[string]any{
+							"key":  missingKey,
+							"cert": missingCert,
+						},
+					},
+				},
+			},
+			errContains: "does not exists",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := amqpjobs.FromConfig(nil, configKey, zap.NewNop(), tt.cfg, pipe, apiJobs.Queue(nil))
+			require.Error(t, err)
+			require.Nil(t, d)
+			assert.Contains(t, err.Error(), tt.errContains)
+		})
+	}
+}
+
+func TestFromPipelineValidationErrors(t *testing.T) {
+	tests := []struct {
+		name        string
+		cfg         *mockConfigurer
+		pipeline    jobs.Pipeline
+		errContains string
+	}{
+		{
+			name: "missing global amqp section",
+			cfg: &mockConfigurer{
+				has: map[string]bool{},
+			},
+			pipeline: jobs.Pipeline{
+				"name":   "test-pipeline",
+				"driver": "amqp",
+			},
+			errContains: "no global amqp configuration",
+		},
+		{
+			name: "malformed queue headers json",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					"amqp": true,
+				},
+				values: map[string]any{
+					"amqp": map[string]any{},
+				},
+			},
+			pipeline: jobs.Pipeline{
+				"name":   "test-pipeline",
+				"driver": "amqp",
+				"config": map[string]any{
+					"queue_headers": "{invalid-json",
+				},
+			},
+			errContains: "invalid character",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			d, err := amqpjobs.FromPipeline(nil, tt.pipeline, zap.NewNop(), tt.cfg, apiJobs.Queue(nil))
+			require.Error(t, err)
+			require.Nil(t, d)
+			assert.Contains(t, err.Error(), tt.errContains)
+		})
+	}
+}
 
 // fanout received job queue name
 func TestAMQPFanoutQueueName(t *testing.T) {
@@ -1090,9 +1245,17 @@ func TestAMQPDeclare(t *testing.T) {
 
 	t.Run("DeclareAMQPPipeline", helpers.DeclareAMQPPipe("test-3", "test-3", "test-3", "", "true", "false"))
 	t.Run("ConsumeAMQPPipeline", helpers.ResumePipes("127.0.0.1:6001", "test-3"))
+	t.Run(
+		"ConsumeAMQPPipelineAlreadyActiveErr",
+		helpers.ResumePipesErr("127.0.0.1:6001", "already in the active state", "test-3"),
+	)
 	t.Run("PushAMQPPipeline", helpers.PushToPipe("test-3", false, "127.0.0.1:6001"))
 	time.Sleep(time.Second)
 	t.Run("PauseAMQPPipeline", helpers.PausePipelines("127.0.0.1:6001", "test-3"))
+	t.Run(
+		"PauseAMQPPipelineNoListenersErr",
+		helpers.PausePipelinesErr("127.0.0.1:6001", "no active listeners", "test-3"),
+	)
 	time.Sleep(time.Second)
 	t.Run("DestroyAMQPPipeline", helpers.DestroyPipelines("127.0.0.1:6001", "test-3"))
 
@@ -1825,6 +1988,17 @@ func TestAMQPRawPayload(t *testing.T) {
 	})
 	require.NoError(t, err)
 
+	err = pch.PublishWithContext(context.Background(), "default", "test-raw", false, false, amqp.Publishing{
+		Headers: amqp.Table{
+			apiJobs.RRHeaders:  []byte(`{"broken-json"`),
+			apiJobs.RRDelay:    "wrong-delay-type",
+			apiJobs.RRPriority: true,
+		},
+		Timestamp: time.Now(),
+		Body:      []byte("payload with malformed rr metadata"),
+	})
+	require.NoError(t, err)
+
 	time.Sleep(time.Second * 10)
 
 	t.Run("DestroyAMQPPipeline", helpers.DestroyPipelines("127.0.0.1:6001", "test-raw"))
@@ -1834,8 +2008,13 @@ func TestAMQPRawPayload(t *testing.T) {
 
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
-	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
+	assert.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("missing header rr_id, generating new one").Len(), 2)
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("missing header rr_job, using the standard one").Len(), 2)
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("failed to unmarshal headers (should be JSON), continuing execution").Len(), 1)
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("unknown delay type").Len(), 1)
+	assert.GreaterOrEqual(t, oLogger.FilterMessageSnippet("unknown priority type").Len(), 1)
 }
 
 func TestAMQPOTEL(t *testing.T) {
