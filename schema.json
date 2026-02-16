@@ -22,6 +22,15 @@
           "additionalProperties": false,
           "description": "Configuration options for the AMQP pipeline.",
           "properties": {
+            "version": {
+              "description": "AMQP pipeline config format version. Use 1 (or omit) for legacy flat options, use 2 for nested entity options (`exchange.*` and `queue.*`). Legacy flat keys may still be present but are ignored by the version 2 parser.",
+              "type": "integer",
+              "enum": [
+                1,
+                2
+              ],
+              "default": 1
+            },
             "priority": {
               "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/priority"
             },
@@ -34,12 +43,103 @@
               "description": "Whether to delete the queue when stopping the pipeline."
             },
             "queue": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
+              "description": "The queue name (legacy, version 1) or queue options object (version 2). In version 2, use the object form and treat legacy flat queue keys as ignored.",
+              "anyOf": [
+                {
+                  "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
+                    },
+                    "routing_key": {
+                      "description": "Routing key for the queue.",
+                      "type": "string"
+                    },
+                    "durable": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Whether the queue is durable."
+                    },
+                    "auto_delete": {
+                      "description": "Whether to auto-delete queues that have had at least one consumer when the last consumer unsubscribes.",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "exclusive": {
+                      "description": "Declare a queue exclusive at the exchange.",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "declare": {
+                      "description": "Whether to declare and bind the queue at startup.",
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "headers": {
+                      "description": "Queue declare args.",
+                      "type": "object",
+                      "minProperties": 1,
+                      "additionalProperties": false,
+                      "patternProperties": {
+                        "^[a-zA-Z0-9._-]+$": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  }
+                }
+              ]
             },
             "exchange": {
-              "description": "The name of the exchange.",
-              "type": "string",
-              "default": "amqp.default"
+              "description": "The exchange name (legacy, version 1) or exchange options object (version 2). In version 2, use the object form and treat legacy flat exchange keys as ignored.",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "default": "amqp.default"
+                },
+                {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "properties": {
+                    "name": {
+                      "description": "The name of the exchange.",
+                      "type": "string",
+                      "default": "amqp.default"
+                    },
+                    "type": {
+                      "description": "The type of exchange.",
+                      "type": "string",
+                      "default": "direct",
+                      "enum": [
+                        "direct",
+                        "fanout",
+                        "topic",
+                        "headers"
+                      ]
+                    },
+                    "durable": {
+                      "description": "Whether the exchange is durable. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "auto_delete": {
+                      "description": "Whether to auto-delete the exchange when the last queue is unbound from it. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "declare": {
+                      "description": "Whether to declare the exchange at startup.",
+                      "type": "boolean",
+                      "default": true
+                    }
+                  }
+                }
+              ]
             },
             "redial_timeout": {
               "description": "Redial timeout (in seconds). How long to try to reconnect to the AMQP server. Default or zero means 60.",

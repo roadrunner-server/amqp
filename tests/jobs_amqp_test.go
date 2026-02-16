@@ -52,6 +52,8 @@ type mockConfigurer struct {
 	errs   map[string]error
 }
 
+type mockQueue struct{}
+
 func (m *mockConfigurer) Has(name string) bool {
 	return m.has[name]
 }
@@ -69,8 +71,69 @@ func (m *mockConfigurer) UnmarshalKey(name string, out any) error {
 	return mapstructure.Decode(val, out)
 }
 
+func (m *mockQueue) Remove(string) []apiJobs.Job {
+	return nil
+}
+
+func (m *mockQueue) Insert(apiJobs.Job) {}
+
+func (m *mockQueue) ExtractMin() apiJobs.Job {
+	return nil
+}
+
+func (m *mockQueue) Len() uint64 {
+	return 0
+}
+
+func declareExistingReadOnlyTopology(t *testing.T, exchangeName, queueName, routingKeyName string) {
+	t.Helper()
+
+	conn, err := amqp.Dial("amqp://guest:guest@127.0.0.1:5672/")
+	require.NoError(t, err)
+	defer func() {
+		_ = conn.Close()
+	}()
+
+	channel, err := conn.Channel()
+	require.NoError(t, err)
+	defer func() {
+		_ = channel.Close()
+	}()
+
+	// Pre-create fanout topology to emulate "read-only/no configure permissions" mode.
+	err = channel.ExchangeDeclare(
+		exchangeName,
+		"fanout",
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	require.NoError(t, err)
+
+	q, err := channel.QueueDeclare(
+		queueName,
+		true,
+		false,
+		false,
+		false,
+		nil,
+	)
+	require.NoError(t, err)
+
+	err = channel.QueueBind(
+		q.Name,
+		routingKeyName,
+		exchangeName,
+		false,
+		nil,
+	)
+	require.NoError(t, err)
+}
+
 func TestFromConfigValidationErrors(t *testing.T) {
-	const configKey = "jobs.pipelines.test"
+	const configKey = "jobs.pipelines.test.config"
 	pipe := jobs.Pipeline{
 		"name":   "test",
 		"driver": "amqp",
@@ -119,6 +182,46 @@ func TestFromConfigValidationErrors(t *testing.T) {
 			errContains: "invalid exchange type",
 		},
 		{
+			name: "version 2 validates nested exchange type",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					configKey: true,
+					"amqp":    true,
+				},
+				values: map[string]any{
+					configKey: map[string]any{
+						"version": 2,
+						"exchange": map[string]any{
+							"name": "nested-exchange",
+							"type": "invalid",
+						},
+					},
+					"amqp": map[string]any{},
+				},
+			},
+			errContains: "invalid exchange type",
+		},
+		{
+			name: "nested exchange config with version 1 uses legacy parser",
+			cfg: &mockConfigurer{
+				has: map[string]bool{
+					configKey: true,
+					"amqp":    true,
+				},
+				values: map[string]any{
+					configKey: map[string]any{
+						"version": 1,
+						"exchange": map[string]any{
+							"name": "nested-exchange",
+							"type": "direct",
+						},
+					},
+					"amqp": map[string]any{},
+				},
+			},
+			errContains: "expected type 'string'",
+		},
+		{
 			name: "missing tls key cert files",
 			cfg: &mockConfigurer{
 				has: map[string]bool{
@@ -147,6 +250,65 @@ func TestFromConfigValidationErrors(t *testing.T) {
 			assert.Contains(t, err.Error(), tt.errContains)
 		})
 	}
+}
+
+func TestFromConfigVersion2IgnoresLegacyFlatKeys(t *testing.T) {
+	const configKey = "jobs.pipelines.v2_ignore.config"
+
+	pipelineName := fmt.Sprintf("v2-ignore-%s", uuid.NewString())
+	exchangeName := fmt.Sprintf("rr-v2-ex-%s", uuid.NewString())
+	queueName := fmt.Sprintf("rr-v2-q-%s", uuid.NewString())
+	routingKeyName := fmt.Sprintf("rr-v2-rk-%s", uuid.NewString())
+
+	pipe := jobs.Pipeline{
+		"name":   pipelineName,
+		"driver": "amqp",
+	}
+
+	cfg := &mockConfigurer{
+		has: map[string]bool{
+			configKey: true,
+			"amqp":    true,
+		},
+		values: map[string]any{
+			configKey: map[string]any{
+				"version": 2,
+				// Legacy v1 keys should be ignored by the v2 parser path.
+				"exchange_type":     "invalid",
+				"durable":           true,
+				"queue_auto_delete": true,
+				"exchange": map[string]any{
+					"name":    exchangeName,
+					"declare": false,
+				},
+				"queue": map[string]any{
+					"name":        queueName,
+					"routing_key": routingKeyName,
+					"declare":     false,
+				},
+			},
+			"amqp": map[string]any{
+				"addr": "amqp://guest:guest@127.0.0.1:5672/",
+			},
+		},
+	}
+
+	d, err := amqpjobs.FromConfig(nil, configKey, zap.NewNop(), cfg, pipe, &mockQueue{})
+	require.NoError(t, err)
+	require.NotNil(t, d)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	st, err := d.State(ctx)
+	require.NoError(t, err)
+	require.NotNil(t, st)
+	assert.Equal(t, queueName, st.Queue)
+	assert.Equal(t, pipelineName, st.Pipeline)
+	assert.Equal(t, "amqp", st.Driver)
+	assert.False(t, st.Ready)
+
+	require.NoError(t, d.Stop(ctx))
 }
 
 func TestFromPipelineValidationErrors(t *testing.T) {
@@ -196,6 +358,136 @@ func TestFromPipelineValidationErrors(t *testing.T) {
 			assert.Contains(t, err.Error(), tt.errContains)
 		})
 	}
+}
+
+func TestFromPipelineReadOnlyDeclarations(t *testing.T) {
+	exchangeName := fmt.Sprintf("rr-ro-pipe-ex-%s", uuid.NewString())
+	queueName := fmt.Sprintf("rr-ro-pipe-q-%s", uuid.NewString())
+	routingKeyName := fmt.Sprintf("rr-ro-pipe-rk-%s", uuid.NewString())
+	pipelineName := fmt.Sprintf("readonly-pipe-%s", uuid.NewString())
+
+	declareExistingReadOnlyTopology(t, exchangeName, queueName, routingKeyName)
+
+	cfg := &mockConfigurer{
+		has: map[string]bool{
+			"amqp": true,
+		},
+		values: map[string]any{
+			"amqp": map[string]any{
+				"addr": "amqp://guest:guest@127.0.0.1:5672/",
+			},
+		},
+	}
+
+	buildPipeline := func(exchangeDeclareValue, queueDeclareValue string) jobs.Pipeline {
+		return jobs.Pipeline{
+			"name":             pipelineName,
+			"driver":           "amqp",
+			"exchange":         exchangeName,
+			"exchange_type":    "direct",
+			"queue":            queueName,
+			"routing_key":      routingKeyName,
+			"exchange_declare": exchangeDeclareValue,
+			"queue_declare":    queueDeclareValue,
+		}
+	}
+
+	t.Run("declare enabled should fail on topology mismatch", func(t *testing.T) {
+		d, err := amqpjobs.FromPipeline(nil, buildPipeline("true", "true"), zap.NewNop(), cfg, &mockQueue{})
+		require.Error(t, err)
+		require.Nil(t, d)
+		assert.Contains(t, err.Error(), "inequivalent arg 'type'")
+	})
+
+	t.Run("declare disabled should skip declaration and allow state", func(t *testing.T) {
+		d, err := amqpjobs.FromPipeline(nil, buildPipeline("false", "false"), zap.NewNop(), cfg, &mockQueue{})
+		require.NoError(t, err)
+		require.NotNil(t, d)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		st, err := d.State(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, st)
+		assert.Equal(t, queueName, st.Queue)
+		assert.Equal(t, pipelineName, st.Pipeline)
+		assert.Equal(t, "amqp", st.Driver)
+		assert.False(t, st.Ready)
+
+		require.NoError(t, d.Stop(ctx))
+	})
+}
+
+func TestFromConfigReadOnlyDeclarations(t *testing.T) {
+	const configKey = "jobs.pipelines.readonly.config"
+
+	exchangeName := fmt.Sprintf("rr-ro-ex-%s", uuid.NewString())
+	queueName := fmt.Sprintf("rr-ro-q-%s", uuid.NewString())
+	routingKeyName := fmt.Sprintf("rr-ro-rk-%s", uuid.NewString())
+	pipelineName := fmt.Sprintf("readonly-%s", uuid.NewString())
+
+	declareExistingReadOnlyTopology(t, exchangeName, queueName, routingKeyName)
+
+	pipe := jobs.Pipeline{
+		"name":   pipelineName,
+		"driver": "amqp",
+	}
+
+	buildConfigurer := func(declare bool) *mockConfigurer {
+		return &mockConfigurer{
+			has: map[string]bool{
+				configKey: true,
+				"amqp":    true,
+			},
+			values: map[string]any{
+				configKey: map[string]any{
+					"version": 2,
+					// legacy keys should be ignored in favor of nested entity config
+					"exchange_type": "fanout",
+					"exchange": map[string]any{
+						"name":    exchangeName,
+						"type":    "direct",
+						"declare": declare,
+					},
+					"queue": map[string]any{
+						"name":        queueName,
+						"routing_key": routingKeyName,
+						"declare":     declare,
+					},
+				},
+				"amqp": map[string]any{
+					"addr": "amqp://guest:guest@127.0.0.1:5672/",
+				},
+			},
+		}
+	}
+
+	t.Run("declare enabled should fail on topology mismatch", func(t *testing.T) {
+		d, err := amqpjobs.FromConfig(nil, configKey, zap.NewNop(), buildConfigurer(true), pipe, &mockQueue{})
+		require.Error(t, err)
+		require.Nil(t, d)
+		assert.Contains(t, err.Error(), "inequivalent arg 'type'")
+	})
+
+	t.Run("declare disabled should skip declaration and allow state", func(t *testing.T) {
+		d, err := amqpjobs.FromConfig(nil, configKey, zap.NewNop(), buildConfigurer(false), pipe, &mockQueue{})
+		require.NoError(t, err)
+		require.NotNil(t, d)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		st, err := d.State(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, st)
+		assert.Equal(t, queueName, st.Queue)
+		assert.Equal(t, pipelineName, st.Pipeline)
+		assert.Equal(t, "amqp", st.Driver)
+		assert.False(t, st.Ready)
+
+		require.NoError(t, d.Stop(ctx))
+	})
 }
 
 // fanout received job queue name

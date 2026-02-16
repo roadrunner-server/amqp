@@ -98,9 +98,32 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 
 	// PARSE CONFIGURATION START -------
 	var conf config
-	err := cfg.UnmarshalKey(configKey, &conf)
+	var configVersion struct {
+		Version int `mapstructure:"version"`
+	}
+
+	err := cfg.UnmarshalKey(configKey, &configVersion)
 	if err != nil {
 		return nil, errors.E(op, err)
+	}
+
+	switch configVersion.Version {
+	case 0, 1:
+		// Backward compatible mode: legacy flat AMQP pipeline options.
+		err = cfg.UnmarshalKey(configKey, &conf)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+	case 2:
+		var pipelineConf pipelineConfigV2
+		err = cfg.UnmarshalKey(configKey, &pipelineConf)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+
+		conf.applyPipelineConfigV2(pipelineConf)
+	default:
+		return nil, errors.E(op, errors.Errorf("unsupported AMQP pipeline config version: %d", configVersion.Version))
 	}
 
 	err = cfg.UnmarshalKey(pluginName, &conf)
@@ -127,7 +150,7 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		eventBus: eventBus,
 		id:       id,
 
-		delayed: ptrTo(int64(0)),
+		delayed: new(int64(0)),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -242,6 +265,8 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	conf.ExchangeAutoDelete = pipeline.Bool(exchangeAutoDelete, false)
 	conf.ExchangeDurable = pipeline.Bool(exchangeDurable, false)
 	conf.QueueAutoDelete = pipeline.Bool(queueAutoDelete, false)
+	conf.ExchangeDeclare = pipeline.Bool(exchangeDeclare, conf.ExchangeDeclare)
+	conf.QueueDeclare = pipeline.Bool(queueDeclare, conf.QueueDeclare)
 	conf.RedialTimeout = pipeline.Int(redialTimeout, 60)
 	conf.ConsumerID = pipeline.String(consumerIDKey, fmt.Sprintf("roadrunner-%s", uuid.NewString()))
 
@@ -251,7 +276,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		log:     log,
 		pq:      pq,
 		stopCh:  make(chan struct{}, 1),
-		delayed: ptrTo(int64(0)),
+		delayed: new(int64(0)),
 
 		// events
 		eventBus: eventBus,
@@ -429,6 +454,27 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 
 		conf := d.config.Load()
 		pipe := *d.pipeline.Load()
+
+		// If queue declaration is disabled, we should not use passive checks:
+		// they require queue configure permissions in RabbitMQ.
+		if !conf.QueueDeclare {
+			// d.conn should be protected (redial)
+			d.mu.RLock()
+			defer d.mu.RUnlock()
+
+			if !d.conn.IsClosed() {
+				return &jobs.State{
+					Priority: uint64(pipe.Priority()), //nolint:gosec
+					Pipeline: pipe.Name(),
+					Driver:   pipe.Driver(),
+					Queue:    conf.Queue,
+					Delayed:  atomic.LoadInt64(d.delayed),
+					Ready:    ready(atomic.LoadUint32(&d.listeners)),
+				}, nil
+			}
+
+			return nil, errors.Str("connection is closed, can't get the state")
+		}
 
 		// if there is no queue, check the connection instead
 		if conf.Queue == "" {
@@ -731,10 +777,6 @@ func dial(addr string, amqps *config) (*amqp.Connection, error) {
 
 func ready(r uint32) bool {
 	return r > 0
-}
-
-func ptrTo[T any](val T) *T {
-	return &val
 }
 
 func (d *Driver) setRoutingKey(headers map[string][]string) string {

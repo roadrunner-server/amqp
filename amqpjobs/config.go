@@ -22,10 +22,13 @@ const (
 
 // pipeline amqp info
 const (
-	exchangeKey   string = "exchange"
-	exchangeType  string = "exchange_type"
-	queue         string = "queue"
-	routingKey    string = "routing_key"
+	exchangeKey     string = "exchange"
+	exchangeType    string = "exchange_type"
+	queue           string = "queue"
+	routingKey      string = "routing_key"
+	exchangeDeclare string = "exchange_declare"
+	queueDeclare    string = "queue_declare"
+
 	prefetch      string = "prefetch"
 	exclusive     string = "exclusive"
 	durable       string = "durable"
@@ -53,6 +56,37 @@ const (
 
 	contentType string = "application/octet-stream"
 )
+
+type pipelineConfigV2 struct {
+	Prefetch int               `mapstructure:"prefetch"`
+	Priority int64             `mapstructure:"priority"`
+	Exchange *exchangeConfigV2 `mapstructure:"exchange"`
+	Queue    *queueConfigV2    `mapstructure:"queue"`
+
+	DeleteQueueOnStop bool   `mapstructure:"delete_queue_on_stop"`
+	MultipleAck       bool   `mapstructure:"multiple_ack"`
+	RequeueOnFail     bool   `mapstructure:"requeue_on_fail"`
+	RedialTimeout     int    `mapstructure:"redial_timeout"`
+	ConsumerID        string `mapstructure:"consumer_id"`
+}
+
+type exchangeConfigV2 struct {
+	Name       string `mapstructure:"name"`
+	Type       string `mapstructure:"type"`
+	Durable    bool   `mapstructure:"durable"`
+	AutoDelete bool   `mapstructure:"auto_delete"`
+	Declare    *bool  `mapstructure:"declare"`
+}
+
+type queueConfigV2 struct {
+	Name       string         `mapstructure:"name"`
+	RoutingKey string         `mapstructure:"routing_key"`
+	Durable    bool           `mapstructure:"durable"`
+	AutoDelete bool           `mapstructure:"auto_delete"`
+	Exclusive  bool           `mapstructure:"exclusive"`
+	Headers    map[string]any `mapstructure:"headers"`
+	Declare    *bool          `mapstructure:"declare"`
+}
 
 // config is used to parse pipeline configuration
 type config struct {
@@ -86,6 +120,14 @@ type config struct {
 	QueueHeaders map[string]any `mapstructure:"queue_headers"`
 	// new in 2023.1.0
 	ConsumerID string `mapstructure:"consumer_id"`
+
+	// exchange/queue declaration controls (new, defaults to true)
+	ExchangeDeclare bool `mapstructure:"exchange_declare"`
+	QueueDeclare    bool `mapstructure:"queue_declare"`
+
+	// set flags are used to keep "default true" while still allowing explicit false.
+	exchangeDeclareSet bool
+	queueDeclareSet    bool
 }
 
 // TLS configuration
@@ -131,6 +173,14 @@ func (c *config) InitDefault() error {
 
 	if c.ConsumerID == "" {
 		c.ConsumerID = fmt.Sprintf("roadrunner-%s", uuid.NewString())
+	}
+
+	if !c.exchangeDeclareSet {
+		c.ExchangeDeclare = true
+	}
+
+	if !c.queueDeclareSet {
+		c.QueueDeclare = true
 	}
 
 	if c.enableTLS() {
@@ -203,4 +253,40 @@ func (c *config) enableTLS() bool {
 		return (c.TLS.RootCA != "" && c.TLS.Key != "" && c.TLS.Cert != "") || (c.TLS.Key != "" && c.TLS.Cert != "")
 	}
 	return false
+}
+
+func (c *config) applyPipelineConfigV2(raw pipelineConfigV2) {
+	c.Prefetch = raw.Prefetch
+	c.Priority = raw.Priority
+	c.DeleteQueueOnStop = raw.DeleteQueueOnStop
+	c.MultipleAck = raw.MultipleAck
+	c.RequeueOnFail = raw.RequeueOnFail
+	c.RedialTimeout = raw.RedialTimeout
+	c.ConsumerID = raw.ConsumerID
+
+	if raw.Exchange != nil {
+		c.Exchange = raw.Exchange.Name
+		c.ExchangeType = raw.Exchange.Type
+		c.ExchangeDurable = raw.Exchange.Durable
+		c.ExchangeAutoDelete = raw.Exchange.AutoDelete
+
+		if raw.Exchange.Declare != nil {
+			c.ExchangeDeclare = *raw.Exchange.Declare
+			c.exchangeDeclareSet = true
+		}
+	}
+
+	if raw.Queue != nil {
+		c.Queue = raw.Queue.Name
+		c.RoutingKey = raw.Queue.RoutingKey
+		c.Durable = raw.Queue.Durable
+		c.QueueAutoDelete = raw.Queue.AutoDelete
+		c.Exclusive = raw.Queue.Exclusive
+		c.QueueHeaders = raw.Queue.Headers
+
+		if raw.Queue.Declare != nil {
+			c.QueueDeclare = *raw.Queue.Declare
+			c.queueDeclareSet = true
+		}
+	}
 }

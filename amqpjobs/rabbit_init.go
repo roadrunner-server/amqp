@@ -14,6 +14,13 @@ func (d *Driver) init() error {
 	if err != nil {
 		return errors.E(op, err)
 	}
+	defer func() {
+		_ = channel.Close()
+	}()
+
+	if !conf.ExchangeDeclare {
+		return nil
+	}
 
 	// declare an exchange (idempotent operation)
 	err = channel.ExchangeDeclare(
@@ -29,7 +36,7 @@ func (d *Driver) init() error {
 		return errors.E(op, err)
 	}
 
-	return channel.Close()
+	return nil
 }
 
 func (d *Driver) declareQueue() error {
@@ -38,6 +45,13 @@ func (d *Driver) declareQueue() error {
 	channel, err := d.conn.Channel()
 	if err != nil {
 		return errors.E(op, err)
+	}
+	defer func() {
+		_ = channel.Close()
+	}()
+
+	if !conf.QueueDeclare {
+		return nil
 	}
 
 	// verify or declare a queue
@@ -65,5 +79,5 @@ func (d *Driver) declareQueue() error {
 		return errors.E(op, err)
 	}
 
-	return channel.Close()
+	return nil
 }

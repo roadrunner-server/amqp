@@ -116,6 +116,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// stopped
 				if atomic.LoadUint64(&d.stopped) == 1 {
 					d.log.Debug("[notify close statistic channel]: channel is not closed, but driver is stopped")
+					return
 				}
 
 				select {
