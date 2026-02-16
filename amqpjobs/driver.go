@@ -265,8 +265,12 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	conf.ExchangeAutoDelete = pipeline.Bool(exchangeAutoDelete, false)
 	conf.ExchangeDurable = pipeline.Bool(exchangeDurable, false)
 	conf.QueueAutoDelete = pipeline.Bool(queueAutoDelete, false)
-	conf.ExchangeDeclare = pipeline.Bool(exchangeDeclare, conf.ExchangeDeclare)
-	conf.QueueDeclare = pipeline.Bool(queueDeclare, conf.QueueDeclare)
+	if pipeline.Has(exchangeDeclare) {
+		conf.ExchangeDeclare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
+	}
+	if pipeline.Has(queueDeclare) {
+		conf.QueueDeclare = new(pipeline.Bool(queueDeclare, conf.queueDeclareEnabled()))
+	}
 	conf.RedialTimeout = pipeline.Int(redialTimeout, 60)
 	conf.ConsumerID = pipeline.String(consumerIDKey, fmt.Sprintf("roadrunner-%s", uuid.NewString()))
 
@@ -457,7 +461,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 
 		// If queue declaration is disabled, we should not use passive checks:
 		// they require queue configure permissions in RabbitMQ.
-		if !conf.QueueDeclare {
+		if !conf.queueDeclareEnabled() {
 			// d.conn should be protected (redial)
 			d.mu.RLock()
 			defer d.mu.RUnlock()
@@ -655,7 +659,6 @@ func (d *Driver) Stop(ctx context.Context) error {
 	d.pq.Remove(pipe.Name())
 
 	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
-	close(d.redialCh)
 	return nil
 }
 

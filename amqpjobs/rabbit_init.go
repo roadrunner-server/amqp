@@ -18,7 +18,7 @@ func (d *Driver) init() error {
 		_ = channel.Close()
 	}()
 
-	if !conf.ExchangeDeclare {
+	if !conf.exchangeDeclareEnabled() {
 		return nil
 	}
 
@@ -50,7 +50,7 @@ func (d *Driver) declareQueue() error {
 		_ = channel.Close()
 	}()
 
-	if !conf.QueueDeclare {
+	if !conf.queueDeclareEnabled() {
 		return nil
 	}
 

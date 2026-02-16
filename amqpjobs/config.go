@@ -122,12 +122,8 @@ type config struct {
 	ConsumerID string `mapstructure:"consumer_id"`
 
 	// exchange/queue declaration controls (new, defaults to true)
-	ExchangeDeclare bool `mapstructure:"exchange_declare"`
-	QueueDeclare    bool `mapstructure:"queue_declare"`
-
-	// set flags are used to keep "default true" while still allowing explicit false.
-	exchangeDeclareSet bool
-	queueDeclareSet    bool
+	ExchangeDeclare *bool `mapstructure:"exchange_declare"`
+	QueueDeclare    *bool `mapstructure:"queue_declare"`
 }
 
 // TLS configuration
@@ -175,12 +171,12 @@ func (c *config) InitDefault() error {
 		c.ConsumerID = fmt.Sprintf("roadrunner-%s", uuid.NewString())
 	}
 
-	if !c.exchangeDeclareSet {
-		c.ExchangeDeclare = true
+	if c.ExchangeDeclare == nil {
+		c.ExchangeDeclare = new(true)
 	}
 
-	if !c.queueDeclareSet {
-		c.QueueDeclare = true
+	if c.QueueDeclare == nil {
+		c.QueueDeclare = new(true)
 	}
 
 	if c.enableTLS() {
@@ -255,6 +251,14 @@ func (c *config) enableTLS() bool {
 	return false
 }
 
+func (c *config) exchangeDeclareEnabled() bool {
+	return c.ExchangeDeclare == nil || *c.ExchangeDeclare
+}
+
+func (c *config) queueDeclareEnabled() bool {
+	return c.QueueDeclare == nil || *c.QueueDeclare
+}
+
 func (c *config) applyPipelineConfigV2(raw pipelineConfigV2) {
 	c.Prefetch = raw.Prefetch
 	c.Priority = raw.Priority
@@ -271,8 +275,7 @@ func (c *config) applyPipelineConfigV2(raw pipelineConfigV2) {
 		c.ExchangeAutoDelete = raw.Exchange.AutoDelete
 
 		if raw.Exchange.Declare != nil {
-			c.ExchangeDeclare = *raw.Exchange.Declare
-			c.exchangeDeclareSet = true
+			c.ExchangeDeclare = new(*raw.Exchange.Declare)
 		}
 	}
 
@@ -285,8 +288,7 @@ func (c *config) applyPipelineConfigV2(raw pipelineConfigV2) {
 		c.QueueHeaders = raw.Queue.Headers
 
 		if raw.Queue.Declare != nil {
-			c.QueueDeclare = *raw.Queue.Declare
-			c.queueDeclareSet = true
+			c.QueueDeclare = new(*raw.Queue.Declare)
 		}
 	}
 }

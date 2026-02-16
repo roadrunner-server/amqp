@@ -183,6 +183,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					}
 				}
 
+				close(d.redialCh)
 				return
 			}
 		}
