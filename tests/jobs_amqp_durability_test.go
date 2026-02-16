@@ -14,6 +14,7 @@ import (
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	amqpDriver "github.com/roadrunner-server/amqp/v5"
+	jobsState "github.com/roadrunner-server/api/v4/plugins/v1/jobs"
 	"github.com/roadrunner-server/config/v5"
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v5"
@@ -195,7 +196,17 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 
 	address := "127.0.0.1:6001"
 	time.Sleep(time.Second * 2)
+
+	out := &jobsState.State{}
+	t.Run("StatsNoQueue", helpers.Stats(address, out))
+	assert.Equal(t, "push_pipeline", out.Pipeline)
+	assert.Equal(t, "amqp", out.Driver)
+	assert.Equal(t, "", out.Queue)
+	assert.Equal(t, false, out.Ready)
+
 	t.Run("PushPipelineWhileRedialing-1", helpers.PushToPipe("push_pipeline", false, address))
+	t.Run("ResumeNoQueueShouldErr", helpers.ResumePipesErr(address, "empty queue name", "push_pipeline"))
+	t.Run("PauseNoQueueShouldErr", helpers.PausePipelinesErr(address, "empty queue name", "push_pipeline"))
 	time.Sleep(time.Second * 2)
 
 	helpers.DisableProxy("redial", t)

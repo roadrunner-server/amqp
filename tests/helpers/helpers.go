@@ -42,6 +42,10 @@ func ResumePipes(address string, pipes ...string) func(t *testing.T) {
 	}
 }
 
+func ResumePipesErr(address, errContains string, pipes ...string) func(t *testing.T) {
+	return callPipelinesErr(address, resume, errContains, pipes...)
+}
+
 func PushToPipe(pipeline string, autoAck bool, address string) func(t *testing.T) {
 	return func(t *testing.T) {
 		conn, err := net.Dial("tcp", address)
@@ -110,6 +114,30 @@ func PausePipelines(address string, pipes ...string) func(t *testing.T) {
 		er := &jobsProto.Empty{}
 		err = client.Call(pause, pipe, er)
 		assert.NoError(t, err)
+	}
+}
+
+func PausePipelinesErr(address, errContains string, pipes ...string) func(t *testing.T) {
+	return callPipelinesErr(address, pause, errContains, pipes...)
+}
+
+func callPipelinesErr(address, method, errContains string, pipes ...string) func(t *testing.T) {
+	return func(t *testing.T) {
+		conn, err := net.Dial("tcp", address)
+		require.NoError(t, err)
+		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+
+		pipe := &jobsProto.Pipelines{Pipelines: make([]string, len(pipes))}
+		for i := range pipes {
+			pipe.GetPipelines()[i] = pipes[i]
+		}
+
+		er := &jobsProto.Empty{}
+		err = client.Call(method, pipe, er)
+		require.Error(t, err)
+		if errContains != "" {
+			assert.Contains(t, err.Error(), errContains)
+		}
 	}
 }
 

@@ -37,7 +37,7 @@ func initTLS(config *TLS, tlsCfg *tls.Config) error {
 			return errors.E(op, errors.Str("could not append Certs from PEM"))
 		}
 		tlsCfg.Certificates = []tls.Certificate{cert}
-		tlsCfg.ClientCAs = certPool
+		tlsCfg.RootCAs = certPool
 
 		return nil
 	}
