@@ -119,6 +119,12 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		return nil, errors.E(op, errors.Errorf("unsupported AMQP pipeline config version: %d", conf.Version))
 	}
 
+	// global amqp section holds addr/tls and must be applied before defaults.
+	err = cfg.UnmarshalKey(pluginName, &conf)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+
 	err = conf.InitDefault()
 	if err != nil {
 		return nil, err
@@ -236,15 +242,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	conf.Prefetch = prf
 	conf.Priority = int64(pipeline.Int(priority, 10))
 	conf.RedialTimeout = pipeline.Int(redialTimeout, 0)
-	if conf.V2Config == nil {
-		conf.V2Config = &v2config{}
-	}
-	if pipeline.Has(exchangeDeclare) {
-		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
-	}
-	if pipeline.Has(queueDeclare) {
-		conf.V2Config.QueueConfig.Declare = new(pipeline.Bool(queueDeclare, conf.queueDeclareEnabled()))
-	}
 
 	// we always use v2 for the FromPipeline constructor
 	conf.Version = 2
@@ -266,11 +263,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 			RequeueOnFail: pipeline.Bool(requeueOnFail, false),
 			ConsumerID:    pipeline.String(consumerIDKey, ""),
 		},
-	}
-
-	err = conf.V2Config.InitDefault()
-	if err != nil {
-		return nil, errors.E(op, err)
 	}
 
 	jb := &Driver{
@@ -305,6 +297,14 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		}
 
 		conf.V2Config.QueueConfig.Headers = tp
+	}
+
+	if pipeline.Has(exchangeDeclare) {
+		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, true))
+	}
+
+	if pipeline.Has(queueDeclare) {
+		conf.V2Config.QueueConfig.Declare = new(pipeline.Bool(queueDeclare, true))
 	}
 
 	err = conf.InitDefault()

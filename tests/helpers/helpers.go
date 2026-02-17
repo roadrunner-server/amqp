@@ -178,11 +178,14 @@ func PushToPipeErr(pipeline string) func(t *testing.T) {
 		var dialer net.Dialer
 		conn, err := dialer.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
 		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close()
+		}()
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
 		req := &jobsProto.PushRequest{Job: &jobsProto.Job{
 			Job:     "some/php/namespace",
-			Id:      "1",
+			Id:      uuid.NewString(),
 			Payload: []byte(`{"hello":"world"}`),
 			Headers: map[string]*jobsProto.HeaderValue{"test": {Value: []string{"test2"}}},
 			Options: &jobsProto.Options{
@@ -196,8 +199,14 @@ func PushToPipeErr(pipeline string) func(t *testing.T) {
 		}}
 
 		er := &jobsProto.Empty{}
-		err = client.Call(push, req, er)
-		assert.Error(t, err)
+
+		// Proxy disable and AMQP connection teardown are asynchronous.
+		// Retry for a short period until push starts failing during redial.
+		require.Eventually(t, func() bool {
+			req.Job.Id = uuid.NewString()
+			err = client.Call(push, req, er)
+			return err != nil
+		}, 5*time.Second, 100*time.Millisecond)
 	}
 }
 
