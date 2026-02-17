@@ -119,11 +119,6 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		return nil, errors.E(op, errors.Errorf("unsupported AMQP pipeline config version: %d", conf.Version))
 	}
 
-	err = cfg.UnmarshalKey(pluginName, &conf)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-
 	err = conf.InitDefault()
 	if err != nil {
 		return nil, err
@@ -222,6 +217,8 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		return nil, errors.E(op, errors.Str("no global amqp configuration, global configuration should contain amqp addrs"))
 	}
 
+	eventBus, id := events.NewEventBus()
+
 	// PARSE CONFIGURATION -------
 	var conf config
 	err := cfg.UnmarshalKey(pluginName, &conf)
@@ -236,9 +233,17 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		log.Error("prefetch parse, driver will use default (10) prefetch", zap.String("prefetch", pipeline.String(prefetch, "10")))
 		prf = 10
 	}
+	conf.Prefetch = prf
+	conf.Priority = int64(pipeline.Int(priority, 10))
+	conf.RedialTimeout = pipeline.Int(redialTimeout, 0)
+	if pipeline.Has(exchangeDeclare) {
+		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
+	}
+	if pipeline.Has(queueDeclare) {
+		conf.V2Config.QueueConfig.Declare = new(pipeline.Bool(queueDeclare, conf.queueDeclareEnabled()))
+	}
 
-	eventBus, id := events.NewEventBus()
-
+	// we always use v2 for the FromPipeline constructor
 	conf.Version = 2
 	conf.V2Config = &v2config{
 		ExchangeConfig: &exchangeConfigV2{
@@ -258,16 +263,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 			RequeueOnFail: pipeline.Bool(requeueOnFail, false),
 			ConsumerID:    pipeline.String(consumerIDKey, ""),
 		},
-	}
-
-	conf.Prefetch = prf
-	conf.Priority = int64(pipeline.Int(priority, 10))
-	conf.RedialTimeout = pipeline.Int(redialTimeout, 0)
-	if pipeline.Has(exchangeDeclare) {
-		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
-	}
-	if pipeline.Has(queueDeclare) {
-		conf.V2Config.QueueConfig.Declare = new(pipeline.Bool(queueDeclare, conf.queueDeclareEnabled()))
 	}
 
 	jb := &Driver{
