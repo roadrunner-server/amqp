@@ -1,0 +1,24 @@
+version: "3"
+
+amqp:
+  addr: amqp://readonly:readonly@127.0.0.1:5675/TEST
+
+jobs:
+  pipelines:
+    readonly:
+      driver: amqp
+      config:
+        version: 2
+        exchange:
+          name: CARGO_OUT
+          type: fanout
+          durable: true
+          auto_delete: false
+          declare: true
+        queue:
+          name: CARGO_ECN_EVENTS
+          routing_key: CARGO_ECN_EVENTS
+          durable: true
+          auto_delete: false
+          exclusive: false
+          declare: true

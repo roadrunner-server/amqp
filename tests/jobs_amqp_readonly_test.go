@@ -3,6 +3,7 @@ package amqp
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 	"testing"
 	"time"
@@ -15,6 +16,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/zap"
+	"gopkg.in/yaml.v3"
 )
 
 const (
@@ -25,6 +27,10 @@ const (
 	readOnlyQueue    = "CARGO_ECN_EVENTS"
 	readOnlyBadQueue = "CARGO_ECN_EVENTS_MISSING"
 	readOnlyRoute    = "CARGO_ECN_EVENTS"
+
+	readOnlyFromFileExchangeDeclareOn = "configs/.rr-amqp-readonly-v2-exchange-declare-on.yaml"
+	readOnlyFromFileQueueCheckOn      = "configs/.rr-amqp-readonly-v2-queue-check-on.yaml"
+	readOnlyFromFileDeclareOff        = "configs/.rr-amqp-readonly-v2-declare-off.yaml"
 )
 
 type readOnlyMockConfigurer struct {
@@ -51,6 +57,99 @@ func (m *readOnlyMockConfigurer) UnmarshalKey(name string, out any) error {
 }
 
 type readOnlyMockQueue struct{}
+
+type readOnlyYAMLConfigurer struct {
+	values map[string]any
+}
+
+func newReadOnlyYAMLConfigurer(path string) (*readOnlyYAMLConfigurer, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	raw := make(map[string]any)
+	err = yaml.Unmarshal(data, &raw)
+	if err != nil {
+		return nil, err
+	}
+
+	normalized, ok := normalizeYAMLValue(raw).(map[string]any)
+	if !ok {
+		return nil, fmt.Errorf("unexpected yaml root type for %s", path)
+	}
+
+	return &readOnlyYAMLConfigurer{
+		values: normalized,
+	}, nil
+}
+
+func (m *readOnlyYAMLConfigurer) Has(name string) bool {
+	_, ok := lookupConfigValue(m.values, name)
+	return ok
+}
+
+func (m *readOnlyYAMLConfigurer) UnmarshalKey(name string, out any) error {
+	val, ok := lookupConfigValue(m.values, name)
+	if !ok {
+		return nil
+	}
+
+	return mapstructure.Decode(val, out)
+}
+
+func normalizeYAMLValue(value any) any {
+	switch t := value.(type) {
+	case map[string]any:
+		out := make(map[string]any, len(t))
+		for k, v := range t {
+			out[k] = normalizeYAMLValue(v)
+		}
+
+		return out
+	case map[any]any:
+		out := make(map[string]any, len(t))
+		for k, v := range t {
+			key, ok := k.(string)
+			if !ok {
+				key = fmt.Sprint(k)
+			}
+			out[key] = normalizeYAMLValue(v)
+		}
+
+		return out
+	case []any:
+		out := make([]any, len(t))
+		for i := range t {
+			out[i] = normalizeYAMLValue(t[i])
+		}
+
+		return out
+	default:
+		return value
+	}
+}
+
+func lookupConfigValue(values map[string]any, path string) (any, bool) {
+	parts := strings.Split(path, ".")
+
+	var cur any = values
+	for _, part := range parts {
+		m, ok := cur.(map[string]any)
+		if !ok {
+			return nil, false
+		}
+
+		next, ok := m[part]
+		if !ok {
+			return nil, false
+		}
+
+		cur = next
+	}
+
+	return cur, true
+}
 
 func (m *readOnlyMockQueue) Remove(string) []apiJobs.Job {
 	return nil
@@ -203,6 +302,84 @@ func TestReadOnlyFromPipelineDeclarations(t *testing.T) {
 		require.NotNil(t, st)
 		assert.Equal(t, readOnlyQueue, st.Queue)
 		assert.Equal(t, pipeName, st.Pipeline)
+		assert.Equal(t, "amqp", st.Driver)
+		assert.False(t, st.Ready)
+
+		require.NoError(t, d.Stop(ctx))
+	})
+}
+
+func TestReadOnlyFromConfigDeclarationsFromFileV2(t *testing.T) {
+	pipe := jobs.Pipeline{
+		"name":   fmt.Sprintf("readonly-static-file-%s", uuid.NewString()),
+		"driver": "amqp",
+	}
+
+	t.Run("exchange declare enabled should fail for readonly user", func(t *testing.T) {
+		cfg, err := newReadOnlyYAMLConfigurer(readOnlyFromFileExchangeDeclareOn)
+		require.NoError(t, err)
+
+		d, err := amqpjobs.FromConfig(
+			nil,
+			readOnlyConfigKey,
+			zap.NewNop(),
+			cfg,
+			pipe,
+			&readOnlyMockQueue{},
+		)
+		require.Error(t, err)
+		require.Nil(t, d)
+		assertPermissionErrorContains(t, err, "exchange")
+	})
+
+	t.Run("queue declare checks enabled should fail on state", func(t *testing.T) {
+		cfg, err := newReadOnlyYAMLConfigurer(readOnlyFromFileQueueCheckOn)
+		require.NoError(t, err)
+
+		d, err := amqpjobs.FromConfig(
+			nil,
+			readOnlyConfigKey,
+			zap.NewNop(),
+			cfg,
+			pipe,
+			&readOnlyMockQueue{},
+		)
+		require.NoError(t, err)
+		require.NotNil(t, d)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		_, err = d.State(ctx)
+		require.Error(t, err)
+		assertQueueCheckErrorContains(t, err)
+
+		require.NoError(t, d.Stop(ctx))
+	})
+
+	t.Run("exchange and queue declare disabled should pass", func(t *testing.T) {
+		cfg, err := newReadOnlyYAMLConfigurer(readOnlyFromFileDeclareOff)
+		require.NoError(t, err)
+
+		d, err := amqpjobs.FromConfig(
+			nil,
+			readOnlyConfigKey,
+			zap.NewNop(),
+			cfg,
+			pipe,
+			&readOnlyMockQueue{},
+		)
+		require.NoError(t, err)
+		require.NotNil(t, d)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+
+		st, err := d.State(ctx)
+		require.NoError(t, err)
+		require.NotNil(t, st)
+		assert.Equal(t, readOnlyQueue, st.Queue)
+		assert.Equal(t, pipe.Name(), st.Pipeline)
 		assert.Equal(t, "amqp", st.Driver)
 		assert.False(t, st.Ready)
 

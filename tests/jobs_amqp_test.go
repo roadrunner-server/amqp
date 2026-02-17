@@ -656,6 +656,88 @@ func TestAMQPHeaders(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
+func TestAMQPHeadersV2(t *testing.T) {
+	cont := endure.New(slog.LevelDebug)
+
+	cfg := &config.Plugin{
+		Version: "2024.1.0",
+		Path:    "configs/.rr-amqp-headers-v2.yaml",
+	}
+
+	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	err := cont.RegisterAll(
+		cfg,
+		&server.Plugin{},
+		&rpcPlugin.Plugin{},
+		&jobs.Plugin{},
+		l,
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&amqpDriver.Plugin{},
+	)
+	assert.NoError(t, err)
+
+	err = cont.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch, err := cont.Serve()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	stopCh := make(chan struct{}, 1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case e := <-ch:
+				assert.Fail(t, "error", e.Error.Error())
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+			case <-sig:
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+				return
+			case <-stopCh:
+				// timeout
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 3)
+	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
+	t.Run("PushToPipeline", helpers.PushToPipe("test-2", false, "127.0.0.1:6001"))
+	time.Sleep(time.Second)
+	t.Run("PipelineDestroy", helpers.DestroyPipelines("127.0.0.1:6001", "test-1", "test-2"))
+
+	stopCh <- struct{}{}
+	wg.Wait()
+
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was started").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
+}
+
 func TestAMQPHeadersXRoutingKey(t *testing.T) {
 	cont := endure.New(slog.LevelDebug)
 
@@ -1296,11 +1378,176 @@ func TestAMQPInit(t *testing.T) {
 	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
+func TestAMQPInitV2(t *testing.T) {
+	cont := endure.New(slog.LevelDebug)
+
+	cfg := &config.Plugin{
+		Version: "2024.1.0",
+		Path:    "configs/.rr-amqp-init-v2.yaml",
+	}
+
+	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	err := cont.RegisterAll(
+		cfg,
+		&server.Plugin{},
+		&rpcPlugin.Plugin{},
+		&jobs.Plugin{},
+		l,
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&amqpDriver.Plugin{},
+	)
+	assert.NoError(t, err)
+
+	err = cont.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch, err := cont.Serve()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	stopCh := make(chan struct{}, 1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case e := <-ch:
+				assert.Fail(t, "error", e.Error.Error())
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+			case <-sig:
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+				return
+			case <-stopCh:
+				// timeout
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 3)
+	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
+	t.Run("PushToPipeline", helpers.PushToPipe("test-2", false, "127.0.0.1:6001"))
+	time.Sleep(time.Second)
+	t.Run("DestroyAMQPPipeline", helpers.DestroyPipelines("127.0.0.1:6001", "test-1", "test-2"))
+
+	stopCh <- struct{}{}
+	wg.Wait()
+
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was started").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("job processing was started").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
+}
+
 func TestAMQPRoutingQueue(t *testing.T) {
 	cont := endure.New(slog.LevelDebug)
 
 	cfg := &config.Plugin{
 		Path:    "configs/.rr-amqp-routing-queue.yaml",
+		Version: "2024.1.0",
+	}
+
+	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	err := cont.RegisterAll(
+		cfg,
+		&server.Plugin{},
+		&rpcPlugin.Plugin{},
+		l,
+		&jobs.Plugin{},
+		&resetter.Plugin{},
+		&informer.Plugin{},
+		&amqpDriver.Plugin{},
+	)
+	assert.NoError(t, err)
+
+	err = cont.Init()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	ch, err := cont.Serve()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sig := make(chan os.Signal, 1)
+	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
+	stopCh := make(chan struct{}, 1)
+
+	go func() {
+		defer wg.Done()
+		for {
+			select {
+			case e := <-ch:
+				assert.Fail(t, "error", e.Error.Error())
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+			case <-sig:
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+				return
+			case <-stopCh:
+				// timeout
+				err = cont.Stop()
+				if err != nil {
+					assert.FailNow(t, "error", err.Error())
+				}
+				return
+			}
+		}
+	}()
+
+	time.Sleep(time.Second * 3)
+	// push to only 1 pipeline
+	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
+	time.Sleep(time.Second)
+
+	t.Run("DestroyAMQPPipeline", helpers.DestroyPipelines("127.0.0.1:6001", "test-1", "test-2"))
+
+	stopCh <- struct{}{}
+	wg.Wait()
+
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was started").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
+	require.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
+	require.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
+	require.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
+}
+
+func TestAMQPRoutingQueueV2(t *testing.T) {
+	cont := endure.New(slog.LevelDebug)
+
+	cfg := &config.Plugin{
+		Path:    "configs/.rr-amqp-routing-queue-v2.yaml",
 		Version: "2024.1.0",
 	}
 

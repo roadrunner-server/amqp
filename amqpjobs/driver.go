@@ -236,6 +236,9 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	conf.Prefetch = prf
 	conf.Priority = int64(pipeline.Int(priority, 10))
 	conf.RedialTimeout = pipeline.Int(redialTimeout, 0)
+	if conf.V2Config == nil {
+		conf.V2Config = &v2config{}
+	}
 	if pipeline.Has(exchangeDeclare) {
 		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
 	}
@@ -263,6 +266,11 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 			RequeueOnFail: pipeline.Bool(requeueOnFail, false),
 			ConsumerID:    pipeline.String(consumerIDKey, ""),
 		},
+	}
+
+	err = conf.V2Config.InitDefault()
+	if err != nil {
+		return nil, errors.E(op, err)
 	}
 
 	jb := &Driver{
@@ -293,7 +301,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		err = json.Unmarshal([]byte(v), &tp)
 		if err != nil {
 			log.Warn("failed to unmarshal headers", zap.String("value", v))
-			return nil, err
+			return nil, errors.E(op, fmt.Errorf("failed to unmarshal headers: %w", err))
 		}
 
 		conf.V2Config.QueueConfig.Headers = tp
@@ -301,7 +309,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 
 	err = conf.InitDefault()
 	if err != nil {
-		return nil, err
+		return nil, errors.E(op, err)
 	}
 
 	jb.conn, err = dial(conf.Addr, &conf)
