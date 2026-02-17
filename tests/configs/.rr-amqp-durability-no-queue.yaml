@@ -1,19 +1,14 @@
-version: '3'
-
+version: "3"
 rpc:
   listen: tcp://127.0.0.1:6001
-
 server:
   command: "php php_test_files/jobs/jobs_ok.php"
   relay: "pipes"
-
 amqp:
   addr: amqp://guest:guest@127.0.0.1:23679/
-
 logs:
   level: debug
   mode: development
-
 jobs:
   pipelines:
     push_pipeline:

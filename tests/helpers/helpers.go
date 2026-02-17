@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"bytes"
+	"context"
 	"net"
 	"net/http"
 	"net/rpc"
@@ -26,7 +27,8 @@ const (
 
 func ResumePipes(address string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		require.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -48,7 +50,8 @@ func ResumePipesErr(address, errContains string, pipes ...string) func(t *testin
 
 func PushToPipe(pipeline string, autoAck bool, address string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		require.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -62,7 +65,8 @@ func PushToPipe(pipeline string, autoAck bool, address string) func(t *testing.T
 
 func PushToPipeDelayed(address string, pipeline string, delay int64) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		assert.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -101,7 +105,8 @@ func createDummyJob(pipeline string, autoAck bool) *jobsProto.Job {
 
 func PausePipelines(address string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		assert.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -123,7 +128,8 @@ func PausePipelinesErr(address, errContains string, pipes ...string) func(t *tes
 
 func callPipelinesErr(address, method, errContains string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		require.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -143,7 +149,8 @@ func callPipelinesErr(address, method, errContains string, pipes ...string) func
 
 func DestroyPipelines(address string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		assert.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -168,13 +175,17 @@ func DestroyPipelines(address string, pipes ...string) func(t *testing.T) {
 
 func PushToPipeErr(pipeline string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", "127.0.0.1:6001")
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
 		require.NoError(t, err)
+		defer func() {
+			_ = conn.Close()
+		}()
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
 		req := &jobsProto.PushRequest{Job: &jobsProto.Job{
 			Job:     "some/php/namespace",
-			Id:      "1",
+			Id:      uuid.NewString(),
 			Payload: []byte(`{"hello":"world"}`),
 			Headers: map[string]*jobsProto.HeaderValue{"test": {Value: []string{"test2"}}},
 			Options: &jobsProto.Options{
@@ -188,14 +199,21 @@ func PushToPipeErr(pipeline string) func(t *testing.T) {
 		}}
 
 		er := &jobsProto.Empty{}
-		err = client.Call(push, req, er)
-		assert.Error(t, err)
+
+		// Proxy disable and AMQP connection teardown are asynchronous.
+		// Retry for a short period until push starts failing during redial.
+		require.Eventually(t, func() bool {
+			req.Job.Id = uuid.NewString()
+			err = client.Call(push, req, er)
+			return err != nil
+		}, 5*time.Second, 100*time.Millisecond)
 	}
 }
 
 func Stats(address string, state *jobState.State) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", address)
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", address)
 		require.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -258,8 +276,13 @@ func DeleteProxy(name string, t *testing.T) {
 }
 
 func DeclareAMQPPipe(queue, routingKey, name, headers, exclusive, durable string) func(t *testing.T) {
+	return DeclareAMQPPipeWithDeclare(queue, routingKey, name, headers, exclusive, durable, "", "")
+}
+
+func DeclareAMQPPipeWithDeclare(queue, routingKey, name, headers, exclusive, durable, exchangeDeclare, queueDeclare string) func(t *testing.T) {
 	return func(t *testing.T) {
-		conn, err := net.Dial("tcp", "127.0.0.1:6001")
+		var dialer net.Dialer
+		conn, err := dialer.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
 		assert.NoError(t, err)
 		client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -283,6 +306,14 @@ func DeclareAMQPPipe(queue, routingKey, name, headers, exclusive, durable string
 			pipe.Pipeline["queue_headers"] = headers
 		}
 
+		if exchangeDeclare != "" {
+			pipe.Pipeline["exchange_declare"] = exchangeDeclare
+		}
+
+		if queueDeclare != "" {
+			pipe.Pipeline["queue_declare"] = queueDeclare
+		}
+
 		er := &jobsProto.Empty{}
 		err = client.Call("jobs.Declare", pipe, er)
 		assert.NoError(t, err)
@@ -290,7 +321,8 @@ func DeclareAMQPPipe(queue, routingKey, name, headers, exclusive, durable string
 }
 
 func Reset(t *testing.T) {
-	conn, err := net.Dial("tcp", "127.0.0.1:6001")
+	var dialer net.Dialer
+	conn, err := dialer.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
 	assert.NoError(t, err)
 	c := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 

@@ -4,6 +4,151 @@
   "title": "roadrunner-amqp",
   "description": "The schema contains all the valid configuration parameters for the AMQP plugin for the roadrunner job system.",
   "definitions": {
+    "exchangeV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "The name of the exchange (version 2 nested key).",
+          "type": "string",
+          "default": "amqp.default"
+        },
+        "type": {
+          "description": "The type of exchange (version 2 nested key).",
+          "type": "string",
+          "default": "direct",
+          "enum": [
+            "direct",
+            "fanout",
+            "topic",
+            "headers"
+          ]
+        },
+        "durable": {
+          "description": "Whether the exchange is durable (version 2 nested key). See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+          "type": "boolean",
+          "default": false
+        },
+        "auto_delete": {
+          "description": "Whether to auto-delete the exchange when the last queue is unbound from it (version 2 nested key). See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+          "type": "boolean",
+          "default": false
+        },
+        "declare": {
+          "description": "Whether to declare the exchange at startup (version 2 nested key).",
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "queueV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
+        },
+        "routing_key": {
+          "description": "Routing key for the queue (version 2 nested key).",
+          "type": "string"
+        },
+        "durable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether the queue is durable (version 2 nested key)."
+        },
+        "auto_delete": {
+          "description": "Whether to auto-delete queues that have had at least one consumer when the last consumer unsubscribes (version 2 nested key).",
+          "type": "boolean",
+          "default": false
+        },
+        "exclusive": {
+          "description": "Declare a queue exclusive at the exchange (version 2 nested key).",
+          "type": "boolean",
+          "default": false
+        },
+        "consumer_id": {
+          "description": "The unique identifier for the consumer amongst all consumers on this channel (version 2).",
+          "type": "string",
+          "default": "roadrunner-<uuid>"
+        },
+        "delete_on_stop": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether to delete the queue when stopping the pipeline (version 2)."
+        },
+        "multiple_ack": {
+          "description": "When multiple ACK is enabled, this delivery and all prior unacknowledged deliveries on the same channel will be acknowledged. This is useful for batch processing of deliveries (version 2).",
+          "type": "boolean",
+          "default": false
+        },
+        "requeue_on_fail": {
+          "description": "Whether to use RabbitMQ mechanisms to requeue the job on failure (version 2).",
+          "type": "boolean",
+          "default": false
+        },
+        "declare": {
+          "description": "Whether to declare and bind the queue at startup (version 2 nested key).",
+          "type": "boolean",
+          "default": true
+        },
+        "headers": {
+          "description": "Queue declare args (version 2 nested key).",
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": false,
+          "patternProperties": {
+            "^[a-zA-Z0-9._-]+$": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        }
+      }
+    },
+    "configV2": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "Dedicated AMQP version 2 pipeline configuration shape (nested exchange/queue options).",
+      "properties": {
+        "version": {
+          "type": "integer",
+          "enum": [
+            2
+          ],
+          "default": 2
+        },
+        "priority": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/priority"
+        },
+        "prefetch": {
+          "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/prefetch"
+        },
+        "redial_timeout": {
+          "description": "Redial timeout (in seconds). How long to try to reconnect to the AMQP server. Default or zero means 60.",
+          "type": "integer",
+          "default": 60
+        },
+        "exchange": {
+          "$ref": "#/definitions/exchangeV2"
+        },
+        "queue": {
+          "$ref": "#/definitions/queueV2"
+        }
+      },
+      "anyOf": [
+        {
+          "required": [
+            "exchange"
+          ]
+        },
+        {
+          "required": [
+            "queue"
+          ]
+        }
+      ]
+    },
     "pipeline": {
       "type": "object",
       "required": [
@@ -20,8 +165,18 @@
         "config": {
           "type": "object",
           "additionalProperties": false,
-          "description": "Configuration options for the AMQP pipeline.",
+          "description": "Configuration options for the AMQP pipeline. For a strict version 2-only shape see `#/definitions/configV2`.",
           "properties": {
+            "version": {
+              "description": "AMQP pipeline config format version. Use 0/1 (or omit) for legacy flat options, use 2 for nested entity options (`exchange.*` and `queue.*`).",
+              "type": "integer",
+              "enum": [
+                0,
+                1,
+                2
+              ],
+              "default": 1
+            },
             "priority": {
               "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/priority"
             },
@@ -31,15 +186,30 @@
             "delete_queue_on_stop": {
               "type": "boolean",
               "default": false,
-              "description": "Whether to delete the queue when stopping the pipeline."
+              "description": "Legacy version 1 flat key. Whether to delete the queue when stopping the pipeline."
             },
             "queue": {
-              "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
+              "description": "The queue name (legacy, version 1) or queue options object (version 2). In version 2, use the object form and treat legacy flat queue keys as ignored.",
+              "anyOf": [
+                {
+                  "$ref": "https://raw.githubusercontent.com/roadrunner-server/jobs/refs/heads/master/schema.json#/definitions/PipelineProperties/queue"
+                },
+                {
+                  "$ref": "#/definitions/queueV2"
+                }
+              ]
             },
             "exchange": {
-              "description": "The name of the exchange.",
-              "type": "string",
-              "default": "amqp.default"
+              "description": "The exchange name (legacy, version 1) or exchange options object (version 2). In version 2, use the object form and treat legacy flat exchange keys as ignored.",
+              "anyOf": [
+                {
+                  "type": "string",
+                  "default": "amqp.default"
+                },
+                {
+                  "$ref": "#/definitions/exchangeV2"
+                }
+              ]
             },
             "redial_timeout": {
               "description": "Redial timeout (in seconds). How long to try to reconnect to the AMQP server. Default or zero means 60.",
@@ -47,56 +217,56 @@
               "default": 60
             },
             "exchange_durable": {
-              "description": "Whether the exchange is durable. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+              "description": "Legacy version 1 flat key. Whether the exchange is durable. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
               "type": "boolean",
               "default": false
             },
             "durable": {
               "type": "boolean",
               "default": false,
-              "description": "Whether the queue is durable."
+              "description": "Legacy version 1 flat key. Whether the queue is durable."
             },
             "consumer_id": {
-              "description": "The unique identifier for the consumer amongst all consumers on this channel.",
+              "description": "The unique identifier for the consumer amongst all consumers on this channel (legacy version 1 flat key).",
               "type": "string",
               "default": "roadrunner-<uuid>"
             },
             "exchange_auto_delete": {
-              "description": "Whether to auto-delete the exchange when the last queue is unbound from it. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
+              "description": "Legacy version 1 flat key. Whether to auto-delete the exchange when the last queue is unbound from it. See https://www.rabbitmq.com/tutorials/amqp-concepts.html#exchanges",
               "type": "boolean",
               "default": false
             },
             "queue_auto_delete": {
-              "description": "Whether to auto-delete queues that have had at least one consumer when the last consumer unsubscribes.",
+              "description": "Legacy version 1 flat key. Whether to auto-delete queues that have had at least one consumer when the last consumer unsubscribes.",
               "type": "boolean",
               "default": false
             },
             "exchange_type": {
-              "description": "The type of exchange.",
+              "description": "Legacy version 1 flat key. The type of exchange.",
               "type": "string",
               "default": "direct"
             },
             "routing_key": {
-              "description": "Routing key for the queue.",
+              "description": "Legacy version 1 flat key. Routing key for the queue.",
               "type": "string"
             },
             "exclusive": {
-              "description": "Declare a queue exclusive at the exchange.",
+              "description": "Legacy version 1 flat key. Declare a queue exclusive at the exchange.",
               "type": "boolean",
               "default": false
             },
             "multiple_ack": {
-              "description": "When multiple ACK is enabled, this delivery and all prior unacknowledged deliveries on the same channel will be acknowledged. This is useful for batch processing of deliveries.",
+              "description": "Legacy version 1 flat key. When multiple ACK is enabled, this delivery and all prior unacknowledged deliveries on the same channel will be acknowledged. This is useful for batch processing of deliveries.",
               "type": "boolean",
               "default": false
             },
             "requeue_on_fail": {
-              "description": "Whether to use RabbitMQ mechanisms to requeue the job on failure.",
+              "description": "Legacy version 1 flat key. Whether to use RabbitMQ mechanisms to requeue the job on failure.",
               "type": "boolean",
               "default": false
             },
             "queue_headers": {
-              "description": "Queue declare args.",
+              "description": "Legacy version 1 flat key. Queue declare args.",
               "type": "object",
               "minProperties": 1,
               "additionalProperties": false,
