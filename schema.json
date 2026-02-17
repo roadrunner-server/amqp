@@ -74,6 +74,26 @@
                       "type": "boolean",
                       "default": false
                     },
+                    "consumer_id": {
+                      "description": "The unique identifier for the consumer amongst all consumers on this channel (version 2).",
+                      "type": "string",
+                      "default": "roadrunner-<uuid>"
+                    },
+                    "delete_on_stop": {
+                      "type": "boolean",
+                      "default": false,
+                      "description": "Whether to delete the queue when stopping the pipeline (version 2)."
+                    },
+                    "multiple_ack": {
+                      "description": "When multiple ACK is enabled, this delivery and all prior unacknowledged deliveries on the same channel will be acknowledged. This is useful for batch processing of deliveries (version 2).",
+                      "type": "boolean",
+                      "default": false
+                    },
+                    "requeue_on_fail": {
+                      "description": "Whether to use RabbitMQ mechanisms to requeue the job on failure (version 2).",
+                      "type": "boolean",
+                      "default": false
+                    },
                     "declare": {
                       "description": "Whether to declare and bind the queue at startup.",
                       "type": "boolean",
@@ -157,7 +177,7 @@
               "description": "Whether the queue is durable."
             },
             "consumer_id": {
-              "description": "The unique identifier for the consumer amongst all consumers on this channel.",
+              "description": "The unique identifier for the consumer amongst all consumers on this channel (legacy version 1 flat key).",
               "type": "string",
               "default": "roadrunner-<uuid>"
             },

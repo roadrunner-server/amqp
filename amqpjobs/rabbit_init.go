@@ -24,10 +24,10 @@ func (d *Driver) init() error {
 
 	// declare an exchange (idempotent operation)
 	err = channel.ExchangeDeclare(
-		conf.Exchange,
-		conf.ExchangeType,
-		conf.ExchangeDurable,
-		conf.ExchangeAutoDelete,
+		conf.exchangeName(),
+		conf.exchangeTypeName(),
+		conf.exchangeDurable(),
+		conf.exchangeAutoDelete(),
 		false,
 		false,
 		nil,
@@ -56,12 +56,12 @@ func (d *Driver) declareQueue() error {
 
 	// verify or declare a queue
 	q, err := channel.QueueDeclare(
-		conf.Queue,
-		conf.Durable,
-		conf.QueueAutoDelete,
-		conf.Exclusive,
+		conf.queueName(),
+		conf.queueDurable(),
+		conf.queueAutoDelete(),
+		conf.queueExclusive(),
 		false,
-		conf.QueueHeaders,
+		conf.queueHeadersArgs(),
 	)
 	if err != nil {
 		return errors.E(op, err)
@@ -70,8 +70,8 @@ func (d *Driver) declareQueue() error {
 	// bind queue to the exchange
 	err = channel.QueueBind(
 		q.Name,
-		conf.RoutingKey,
-		conf.Exchange,
+		conf.routingKeyName(),
+		conf.exchangeName(),
 		false,
 		nil,
 	)

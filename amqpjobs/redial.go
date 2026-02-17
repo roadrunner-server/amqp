@@ -138,9 +138,9 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				stCh := <-d.stateChan
 
 				// cancel new deliveries
-				err := pch.Cancel(d.config.Load().ConsumerID, false)
+				err := pch.Cancel(d.config.Load().consumerID(), false)
 				if err != nil {
-					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.config.Load().ConsumerID))
+					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.config.Load().consumerID()))
 				}
 
 				// wait for the listener to stop
@@ -151,9 +151,9 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// remove the items associated with that pipeline from the priority_queue
 				_ = d.pq.Remove((*d.pipeline.Load()).Name())
 
-				if d.config.Load().DeleteQueueOnStop {
+				if d.config.Load().deleteQueueOnStopEnabled() {
 					var n int
-					n, err = pch.QueueDelete(d.config.Load().Queue, false, false, false)
+					n, err = pch.QueueDelete(d.config.Load().queueName(), false, false, false)
 					if err != nil {
 						d.log.Error("queue delete", zap.Error(err))
 					}
@@ -183,7 +183,6 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					}
 				}
 
-				close(d.redialCh)
 				return
 			}
 		}
@@ -243,7 +242,7 @@ func (d *Driver) redial(rm *redialMsg) {
 
 	expb := backoff.NewExponentialBackOff()
 	// set the retry timeout (minutes)
-	expb.MaxElapsedTime = time.Duration(d.config.Load().RedialTimeout) * time.Second
+	expb.MaxElapsedTime = time.Duration(d.config.Load().redialTimeoutSeconds()) * time.Second
 	operation := func() error {
 		var err error
 		d.conn, err = dial(d.config.Load().Addr, d.config.Load())
@@ -305,8 +304,8 @@ func (d *Driver) redial(rm *redialMsg) {
 
 			// start reading messages from the channel
 			deliv, err := d.consumeChan.Consume(
-				d.config.Load().Queue,
-				d.config.Load().ConsumerID,
+				d.config.Load().queueName(),
+				d.config.Load().consumerID(),
 				false,
 				false,
 				false,

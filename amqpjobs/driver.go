@@ -14,7 +14,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/errors"
@@ -98,32 +97,26 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 
 	// PARSE CONFIGURATION START -------
 	var conf config
-	var configVersion struct {
-		Version int `mapstructure:"version"`
-	}
-
-	err := cfg.UnmarshalKey(configKey, &configVersion)
+	err := cfg.UnmarshalKey(configKey, &conf)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
 
-	switch configVersion.Version {
+	switch conf.Version {
 	case 0, 1:
-		// Backward compatible mode: legacy flat AMQP pipeline options.
-		err = cfg.UnmarshalKey(configKey, &conf)
+		conf.V1Config = &v1config{}
+		err = cfg.UnmarshalKey(configKey, conf.V1Config)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
 	case 2:
-		var pipelineConf pipelineConfigV2
-		err = cfg.UnmarshalKey(configKey, &pipelineConf)
+		conf.V2Config = &v2config{}
+		err = cfg.UnmarshalKey(configKey, conf.V2Config)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
-
-		conf.applyPipelineConfigV2(pipelineConf)
 	default:
-		return nil, errors.E(op, errors.Errorf("unsupported AMQP pipeline config version: %d", configVersion.Version))
+		return nil, errors.E(op, errors.Errorf("unsupported AMQP pipeline config version: %d", conf.Version))
 	}
 
 	err = cfg.UnmarshalKey(pluginName, &conf)
@@ -235,10 +228,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
-	err = conf.InitDefault()
-	if err != nil {
-		return nil, err
-	}
 	// PARSE CONFIGURATION -------
 
 	// parse prefetch
@@ -249,30 +238,37 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 	}
 
 	eventBus, id := events.NewEventBus()
-	conf.RoutingKey = pipeline.String(routingKey, "")
-	conf.Queue = pipeline.String(queue, "")
-	conf.ExchangeType = pipeline.String(exchangeType, "direct")
-	conf.Exchange = pipeline.String(exchangeKey, "amqp.default")
+
+	conf.Version = 2
+	conf.V2Config = &v2config{
+		ExchangeConfig: &exchangeConfigV2{
+			Name:       pipeline.String(exchangeKey, "amqp.default"),
+			Type:       pipeline.String(exchangeType, "direct"),
+			Durable:    pipeline.Bool(exchangeDurable, false),
+			AutoDelete: pipeline.Bool(exchangeAutoDelete, false),
+		},
+		QueueConfig: &queueConfigV2{
+			Name:          pipeline.String(queue, ""),
+			RoutingKey:    pipeline.String(routingKey, ""),
+			Durable:       pipeline.Bool(durable, false),
+			AutoDelete:    pipeline.Bool(queueAutoDelete, false),
+			Exclusive:     pipeline.Bool(exclusive, false),
+			DeleteOnStop:  pipeline.Bool(deleteOnStop, false),
+			MultipleAck:   pipeline.Bool(multipleAck, false),
+			RequeueOnFail: pipeline.Bool(requeueOnFail, false),
+			ConsumerID:    pipeline.String(consumerIDKey, ""),
+		},
+	}
+
 	conf.Prefetch = prf
 	conf.Priority = int64(pipeline.Int(priority, 10))
-	conf.Durable = pipeline.Bool(durable, false)
-	conf.DeleteQueueOnStop = pipeline.Bool(deleteOnStop, false)
-	conf.Exclusive = pipeline.Bool(exclusive, false)
-	conf.MultipleAck = pipeline.Bool(multipleAck, false)
-	conf.RequeueOnFail = pipeline.Bool(requeueOnFail, false)
-
-	// new in 2.12
-	conf.ExchangeAutoDelete = pipeline.Bool(exchangeAutoDelete, false)
-	conf.ExchangeDurable = pipeline.Bool(exchangeDurable, false)
-	conf.QueueAutoDelete = pipeline.Bool(queueAutoDelete, false)
+	conf.RedialTimeout = pipeline.Int(redialTimeout, 0)
 	if pipeline.Has(exchangeDeclare) {
-		conf.ExchangeDeclare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
+		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, conf.exchangeDeclareEnabled()))
 	}
 	if pipeline.Has(queueDeclare) {
-		conf.QueueDeclare = new(pipeline.Bool(queueDeclare, conf.queueDeclareEnabled()))
+		conf.V2Config.QueueConfig.Declare = new(pipeline.Bool(queueDeclare, conf.queueDeclareEnabled()))
 	}
-	conf.RedialTimeout = pipeline.Int(redialTimeout, 60)
-	conf.ConsumerID = pipeline.String(consumerIDKey, fmt.Sprintf("roadrunner-%s", uuid.NewString()))
 
 	jb := &Driver{
 		prop:    prop,
@@ -305,7 +301,12 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 			return nil, err
 		}
 
-		conf.QueueHeaders = tp
+		conf.V2Config.QueueConfig.Headers = tp
+	}
+
+	err = conf.InitDefault()
+	if err != nil {
+		return nil, err
 	}
 
 	jb.conn, err = dial(conf.Addr, &conf)
@@ -366,11 +367,6 @@ func (d *Driver) Push(ctx context.Context, job jobs.Message) error {
 	ctx, span := trace.SpanFromContext(ctx).TracerProvider().Tracer(tracerName).Start(ctx, "amqp_push")
 	defer span.End()
 
-	conf := d.config.Load()
-	if conf.RoutingKey == "" && conf.ExchangeType != "fanout" {
-		return errors.Str("empty routing key, consider adding the routing key name to the AMQP configuration")
-	}
-
 	// load atomic value
 	pipe := *d.pipeline.Load()
 	if pipe.Name() != job.GroupID() {
@@ -397,7 +393,7 @@ func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 		return errors.E(op, errors.Errorf("no such pipeline registered: %s", pipe.Name()))
 	}
 
-	if d.config.Load().Queue == "" {
+	if d.config.Load().queueName() == "" {
 		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
@@ -424,8 +420,8 @@ func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 
 	// start reading messages from the channel
 	deliv, err := d.consumeChan.Consume(
-		d.config.Load().Queue,
-		d.config.Load().ConsumerID,
+		d.config.Load().queueName(),
+		d.config.Load().consumerID(),
 		false,
 		false,
 		false,
@@ -471,7 +467,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 					Priority: uint64(pipe.Priority()), //nolint:gosec
 					Pipeline: pipe.Name(),
 					Driver:   pipe.Driver(),
-					Queue:    conf.Queue,
+					Queue:    conf.queueName(),
 					Delayed:  atomic.LoadInt64(d.delayed),
 					Ready:    ready(atomic.LoadUint32(&d.listeners)),
 				}, nil
@@ -481,7 +477,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 		}
 
 		// if there is no queue, check the connection instead
-		if conf.Queue == "" {
+		if conf.queueName() == "" {
 			// d.conn should be protected (redial)
 			d.mu.RLock()
 			defer d.mu.RUnlock()
@@ -501,12 +497,12 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 
 		// verify or declare a queue
 		q, err := stateCh.QueueDeclarePassive(
-			conf.Queue,
-			conf.Durable,
-			conf.QueueAutoDelete,
-			conf.Exclusive,
+			conf.queueName(),
+			conf.queueDurable(),
+			conf.queueAutoDelete(),
+			conf.queueExclusive(),
 			false,
-			conf.QueueHeaders,
+			conf.queueHeadersArgs(),
 		)
 
 		if err != nil {
@@ -539,7 +535,7 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 		return errors.Errorf("no such pipeline: %s", pipe.Name())
 	}
 
-	if d.config.Load().Queue == "" {
+	if d.config.Load().queueName() == "" {
 		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
@@ -552,7 +548,7 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
-	err := d.consumeChan.Cancel(d.config.Load().ConsumerID, true)
+	err := d.consumeChan.Cancel(d.config.Load().consumerID(), true)
 	if err != nil {
 		d.log.Error("cancel publish channel, forcing close", zap.Error(err))
 		errCl := d.consumeChan.Close()
@@ -584,7 +580,7 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 	}
 
 	conf := d.config.Load()
-	if conf.Queue == "" {
+	if conf.queueName() == "" {
 		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
@@ -615,8 +611,8 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 
 	// start reading messages from the channel
 	deliv, err := d.consumeChan.Consume(
-		conf.Queue,
-		d.config.Load().ConsumerID,
+		conf.queueName(),
+		d.config.Load().consumerID(),
 		false,
 		false,
 		false,
@@ -650,8 +646,14 @@ func (d *Driver) Stop(ctx context.Context) error {
 
 	d.eventBus.Unsubscribe(d.id)
 
-	atomic.StoreUint64(&d.stopped, 1)
-	d.stopCh <- struct{}{}
+	if !atomic.CompareAndSwapUint64(&d.stopped, 0, 1) {
+		return nil
+	}
+
+	select {
+	case d.stopCh <- struct{}{}:
+	default:
+	}
 
 	pipe := *d.pipeline.Load()
 
@@ -689,9 +691,9 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			// TODO declare separate method for this if condition
 			// TODO dlx cache channel??
 			delayMs := int64(msg.Options.DelayDuration().Seconds() * 1000)
-			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, conf.Exchange, d.queueOrRk())
+			tmpQ := fmt.Sprintf("delayed-%d.%s.%s", delayMs, conf.exchangeName(), d.queueOrRk())
 			_, err = pch.QueueDeclare(tmpQ, true, false, false, false, amqp.Table{
-				dlx:           conf.Exchange,
+				dlx:           conf.exchangeName(),
 				dlxRoutingKey: rk,
 				dlxTTL:        delayMs,
 				dlxExpires:    delayMs * 2,
@@ -701,14 +703,14 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 				return errors.E(op, err)
 			}
 
-			err = pch.QueueBind(tmpQ, tmpQ, conf.Exchange, false, nil)
+			err = pch.QueueBind(tmpQ, tmpQ, conf.exchangeName(), false, nil)
 			if err != nil {
 				atomic.AddInt64(d.delayed, ^int64(0))
 				return errors.E(op, err)
 			}
 
 			// insert to the local, limited pipeline
-			err = pch.PublishWithContext(ctx, conf.Exchange, tmpQ, false, false, amqp.Publishing{
+			err = pch.PublishWithContext(ctx, conf.exchangeName(), tmpQ, false, false, amqp.Publishing{
 				Headers:      table,
 				ContentType:  contentType,
 				Timestamp:    time.Now().UTC(),
@@ -724,7 +726,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			return nil
 		}
 
-		dc, err := pch.PublishWithDeferredConfirmWithContext(ctx, conf.Exchange, rk, false, false, amqp.Publishing{
+		dc, err := pch.PublishWithDeferredConfirmWithContext(ctx, conf.exchangeName(), rk, false, false, amqp.Publishing{
 			Headers:      table,
 			ContentType:  contentType,
 			Timestamp:    time.Now().UTC(),
@@ -790,14 +792,14 @@ func (d *Driver) setRoutingKey(headers map[string][]string) string {
 		}
 	}
 
-	return d.config.Load().RoutingKey
+	return d.config.Load().routingKeyName()
 }
 
 func (d *Driver) queueOrRk() string {
 	conf := d.config.Load()
-	if conf.Queue != "" {
-		return conf.Queue
+	if conf.queueName() != "" {
+		return conf.queueName()
 	}
 
-	return conf.RoutingKey
+	return conf.routingKeyName()
 }
