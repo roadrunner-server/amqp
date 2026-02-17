@@ -223,8 +223,6 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		return nil, errors.E(op, errors.Str("no global amqp configuration, global configuration should contain amqp addrs"))
 	}
 
-	eventBus, id := events.NewEventBus()
-
 	// PARSE CONFIGURATION -------
 	var conf config
 	err := cfg.UnmarshalKey(pluginName, &conf)
@@ -265,6 +263,7 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 		},
 	}
 
+	eventBus, id := events.NewEventBus()
 	jb := &Driver{
 		prop:    prop,
 		tracer:  tracer,
