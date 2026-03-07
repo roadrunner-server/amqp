@@ -7,7 +7,7 @@ package amqp
 import (
 	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
 
-	"github.com/roadrunner-server/amqp/v5/amqpjobs"
+	"github.com/roadrunner-server/amqp/v6/amqpjobs"
 
 	"github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/endure/v2/dep"

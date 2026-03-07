@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-viper/mapstructure/v2"
 	"github.com/google/uuid"
-	amqpjobs "github.com/roadrunner-server/amqp/v5/amqpjobs"
+	amqpjobs "github.com/roadrunner-server/amqp/v6/amqpjobs"
 	apiJobs "github.com/roadrunner-server/api/v4/plugins/v4/jobs"
 	"github.com/roadrunner-server/jobs/v5"
 	"github.com/stretchr/testify/assert"

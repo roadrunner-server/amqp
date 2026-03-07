@@ -9,7 +9,7 @@ require (
 	github.com/go-viper/mapstructure/v2 v2.5.0
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0
-	github.com/roadrunner-server/amqp/v5 v5.2.3
+	github.com/roadrunner-server/amqp/v6 v6.0.0
 	github.com/roadrunner-server/api/v4 v4.23.0
 	github.com/roadrunner-server/config/v5 v5.1.9
 	github.com/roadrunner-server/endure/v2 v2.6.2
@@ -28,7 +28,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 )
 
-replace github.com/roadrunner-server/amqp/v5 => ../
+replace github.com/roadrunner-server/amqp/v6 => ../
 
 require (
 	github.com/beorn7/perks v1.0.1 // indirect
