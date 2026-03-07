@@ -431,9 +431,7 @@ func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 	}
 
 	d.consumeChan.NotifyClose(d.notifyCloseConsumeCh)
-	// run listener
 	d.listener(deliv)
-
 	d.listeners.Store(1)
 	d.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
 	return nil
@@ -537,18 +535,18 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 		return errors.Str("empty queue name, consider adding the queue name to the AMQP configuration")
 	}
 
-	// atomically check and decrement the number of listeners
-	if !d.listeners.CompareAndSwap(1, 0) {
-		return errors.Str("no active listeners, nothing to pause")
-	}
-
 	// protect connection (redial)
 	d.mu.Lock()
 	defer d.mu.Unlock()
 
+	// check and clear the listener flag while holding the lock
+	if !d.listeners.CompareAndSwap(1, 0) {
+		return errors.Str("no active listeners, nothing to pause")
+	}
+
 	err := d.consumeChan.Cancel(d.config.Load().consumerID(), true)
 	if err != nil {
-		d.log.Error("cancel publish channel, forcing close", zap.Error(err))
+		d.log.Error("cancel consume channel, forcing close", zap.Error(err))
 		errCl := d.consumeChan.Close()
 		if errCl != nil {
 			return stderr.Join(errCl, err)
@@ -621,16 +619,15 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 		return err
 	}
 
-	// run listener
 	d.listener(deliv)
-
-	// increase the number of listeners
-	d.listeners.Add(1)
+	// increase the listener counter
+	d.listeners.Store(1)
 	d.log.Debug("pipeline was resumed",
 		zap.String("driver", pipe.Driver()),
 		zap.String("pipeline", pipe.Name()),
 		zap.Time("start", start),
 		zap.Int64("elapsed", time.Since(start).Milliseconds()),
+		zap.Int64("listeners", int64(d.listeners.Load())),
 	)
 
 	return nil
