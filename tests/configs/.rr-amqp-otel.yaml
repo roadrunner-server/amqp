@@ -16,15 +16,6 @@ logs:
   encoding: console
   mode: development
 
-otel:
-  insecure: true
-  compress: false
-  client: http
-  exporter: zipkin
-  service_name: "rr_test_amqp"
-  service_version: "1.0.0"
-  endpoint: "http://127.0.0.1:9411/api/v2/spans"
-
 jobs:
   num_pollers: 5
   pipeline_size: 100000

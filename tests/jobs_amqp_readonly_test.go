@@ -131,10 +131,8 @@ func normalizeYAMLValue(value any) any {
 }
 
 func lookupConfigValue(values map[string]any, path string) (any, bool) {
-	parts := strings.Split(path, ".")
-
 	var cur any = values
-	for _, part := range parts {
+	for part := range strings.SplitSeq(path, ".") {
 		m, ok := cur.(map[string]any)
 		if !ok {
 			return nil, false
@@ -197,7 +195,7 @@ func TestReadOnlyFromConfigDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		_, err = d.State(ctx)
@@ -219,7 +217,7 @@ func TestReadOnlyFromConfigDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		st, err := d.State(ctx)
@@ -272,7 +270,7 @@ func TestReadOnlyFromPipelineDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		_, err = d.State(ctx)
@@ -294,7 +292,7 @@ func TestReadOnlyFromPipelineDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		st, err := d.State(ctx)
@@ -347,7 +345,7 @@ func TestReadOnlyFromConfigDeclarationsFromFileV2(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		_, err = d.State(ctx)
@@ -372,7 +370,7 @@ func TestReadOnlyFromConfigDeclarationsFromFileV2(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		st, err := d.State(ctx)

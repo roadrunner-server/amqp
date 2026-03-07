@@ -2,12 +2,9 @@ package amqp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
-	"net/http"
 	"net/rpc"
 	"os"
 	"os/signal"
@@ -37,12 +34,13 @@ import (
 	"github.com/roadrunner-server/jobs/v5"
 	"github.com/roadrunner-server/logger/v5"
 	"github.com/roadrunner-server/metrics/v5"
-	"github.com/roadrunner-server/otel/v5"
 	"github.com/roadrunner-server/resetter/v5"
 	rpcPlugin "github.com/roadrunner-server/rpc/v5"
 	"github.com/roadrunner-server/server/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.uber.org/zap"
 )
 
@@ -51,6 +49,23 @@ type mockConfigurer struct {
 	values map[string]any
 	errs   map[string]error
 }
+
+type inMemoryTracer struct {
+	tp  *sdktrace.TracerProvider
+	exp *tracetest.InMemoryExporter
+}
+
+func newInMemoryTracer(t *testing.T) *inMemoryTracer {
+	t.Helper()
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+	t.Cleanup(func() { _ = tp.Shutdown(context.Background()) })
+	return &inMemoryTracer{tp: tp, exp: exp}
+}
+
+func (m *inMemoryTracer) Init() error                      { return nil }
+func (m *inMemoryTracer) Name() string                     { return "inMemoryTracer" }
+func (m *inMemoryTracer) Tracer() *sdktrace.TracerProvider { return m.tp }
 
 type mockQueue struct{}
 
@@ -297,7 +312,7 @@ func TestFromConfigVersion2IgnoresLegacyFlatKeys(t *testing.T) {
 	require.NoError(t, err)
 	require.NotNil(t, d)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
 
 	st, err := d.State(ctx)
@@ -404,7 +419,7 @@ func TestFromPipelineReadOnlyDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		st, err := d.State(ctx)
@@ -475,7 +490,7 @@ func TestFromConfigReadOnlyDeclarations(t *testing.T) {
 		require.NoError(t, err)
 		require.NotNil(t, d)
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 		defer cancel()
 
 		st, err := d.State(ctx)
@@ -526,12 +541,10 @@ func TestAMQPFanoutQueueName(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -555,7 +568,7 @@ func TestAMQPFanoutQueueName(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-fanout-1", false, "127.0.0.1:6001"))
@@ -609,12 +622,10 @@ func TestAMQPHeaders(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -638,7 +649,7 @@ func TestAMQPHeaders(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -691,12 +702,10 @@ func TestAMQPHeadersV2(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -720,7 +729,7 @@ func TestAMQPHeadersV2(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -773,12 +782,10 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -802,7 +809,7 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -822,7 +829,7 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 	}
 
 	var d net.Dialer
-	conn, err := d.DialContext(context.Background(), "tcp", "127.0.0.1:6001")
+	conn, err := d.DialContext(t.Context(), "tcp", "127.0.0.1:6001")
 	require.NoError(t, err)
 	client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
 
@@ -883,12 +890,10 @@ func TestAMQPDeclareHeaders(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -912,7 +917,7 @@ func TestAMQPDeclareHeaders(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -972,12 +977,10 @@ func TestAMQPInitTLS(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1001,7 +1004,7 @@ func TestAMQPInitTLS(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6111"))
@@ -1055,12 +1058,10 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1084,7 +1085,7 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	for range 100 {
@@ -1141,12 +1142,10 @@ func TestAMQP20Pipelines(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1170,7 +1169,7 @@ func TestAMQP20Pipelines(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	for i := 1; i < 21; i++ {
@@ -1249,12 +1248,10 @@ func TestAMQPBug1792(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1278,7 +1275,7 @@ func TestAMQPBug1792(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushPipelineDelayed", helpers.PushToPipeDelayed("127.0.0.1:1792", "queue1", 5))
@@ -1331,12 +1328,10 @@ func TestAMQPInit(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1360,7 +1355,7 @@ func TestAMQPInit(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -1413,12 +1408,10 @@ func TestAMQPInitV2(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1442,7 +1435,7 @@ func TestAMQPInitV2(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -1495,12 +1488,10 @@ func TestAMQPRoutingQueue(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1524,7 +1515,7 @@ func TestAMQPRoutingQueue(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	// push to only 1 pipeline
@@ -1578,12 +1569,10 @@ func TestAMQPRoutingQueueV2(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1607,7 +1596,7 @@ func TestAMQPRoutingQueueV2(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	// push to only 1 pipeline
@@ -1661,12 +1650,10 @@ func TestAMQPReset(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1690,7 +1677,7 @@ func TestAMQPReset(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -1749,12 +1736,10 @@ func TestAMQPDeclare(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1778,7 +1763,7 @@ func TestAMQPDeclare(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -1844,12 +1829,10 @@ func TestAMQPDeclareDurable(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1873,7 +1856,7 @@ func TestAMQPDeclareDurable(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -1931,12 +1914,10 @@ func TestAMQPJobsError(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -1960,7 +1941,7 @@ func TestAMQPJobsError(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -2048,12 +2029,10 @@ func TestAMQPStats(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -2077,7 +2056,7 @@ func TestAMQPStats(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -2170,12 +2149,10 @@ func TestAMQPBadResp(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -2199,7 +2176,7 @@ func TestAMQPBadResp(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -2256,12 +2233,10 @@ func TestAMQPSlow(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -2285,7 +2260,7 @@ func TestAMQPSlow(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6001"))
@@ -2349,12 +2324,10 @@ func TestAMQPSlowAutoAck(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -2378,7 +2351,7 @@ func TestAMQPSlowAutoAck(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", true, "127.0.0.1:6001"))
@@ -2444,12 +2417,10 @@ func TestAMQPRawPayload(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -2473,7 +2444,7 @@ func TestAMQPRawPayload(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 
@@ -2520,14 +2491,14 @@ func TestAMQPRawPayload(t *testing.T) {
 	assert.NoError(t, err)
 	require.NotNil(t, pch)
 
-	err = pch.PublishWithContext(context.Background(), "default", "test-raw", false, false, amqp.Publishing{
+	err = pch.PublishWithContext(t.Context(), "default", "test-raw", false, false, amqp.Publishing{
 		Headers:   amqp.Table{"foo": 2.3},
 		Timestamp: time.Now(),
 		Body:      []byte("foooobarrrrrrrrbazzzzzzzzzzzzzzzzzzzzzzzzz"),
 	})
 	require.NoError(t, err)
 
-	err = pch.PublishWithContext(context.Background(), "default", "test-raw", false, false, amqp.Publishing{
+	err = pch.PublishWithContext(t.Context(), "default", "test-raw", false, false, amqp.Publishing{
 		Headers: amqp.Table{
 			apiJobs.RRHeaders:  []byte(`{"broken-json"`),
 			apiJobs.RRDelay:    "wrong-delay-type",
@@ -2564,13 +2535,15 @@ func TestAMQPOTEL(t *testing.T) {
 		Path:    "configs/.rr-amqp-otel.yaml",
 	}
 
+	tracer := newInMemoryTracer(t)
+
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
 		&rpcPlugin.Plugin{},
 		&jobs.Plugin{},
-		&otel.Plugin{},
+		tracer,
 		l,
 		&resetter.Plugin{},
 		&informer.Plugin{},
@@ -2592,12 +2565,10 @@ func TestAMQPOTEL(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -2621,7 +2592,7 @@ func TestAMQPOTEL(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	t.Run("PushToPipeline", helpers.PushToPipe("test-1", false, "127.0.0.1:6100"))
@@ -2631,17 +2602,17 @@ func TestAMQPOTEL(t *testing.T) {
 	stopCh <- struct{}{}
 	wg.Wait()
 
-	resp, err := http.Get("http://127.0.0.1:9411/api/v2/spans?serviceName=rr_test_amqp") //nolint:noctx
-	require.NoError(t, err)
-	require.NotNil(t, resp)
+	spans := tracer.exp.GetSpans()
+	spanNameSet := make(map[string]struct{}, len(spans))
+	for _, s := range spans {
+		spanNameSet[s.Name] = struct{}{}
+	}
+	uniqueNames := make([]string, 0, len(spanNameSet))
+	for name := range spanNameSet {
+		uniqueNames = append(uniqueNames, name)
+	}
+	slices.Sort(uniqueNames)
 
-	buf, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	var spans []string
-	err = json.Unmarshal(buf, &spans)
-	assert.NoError(t, err)
-	slices.Sort(spans)
 	expected := []string{
 		"amqp_listener",
 		"amqp_push",
@@ -2650,15 +2621,11 @@ func TestAMQPOTEL(t *testing.T) {
 		"jobs_listener",
 		"push",
 	}
-	assert.Equal(t, expected, spans)
+	assert.Equal(t, expected, uniqueNames)
 
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
-
-	t.Cleanup(func() {
-		_ = resp.Body.Close()
-	})
 }
