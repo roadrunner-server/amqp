@@ -66,10 +66,10 @@ type Driver struct {
 	stateChan   chan *amqp.Channel
 	publishChan chan *amqp.Channel
 
-	listeners uint32
-	delayed   *int64
+	listeners atomic.Uint32
+	delayed   atomic.Int64
 	stopCh    chan struct{}
-	stopped   uint64
+	stopped   atomic.Uint64
 }
 
 // FromConfig initializes AMQP pipeline
@@ -143,8 +143,6 @@ func FromConfig(tracer *sdktrace.TracerProvider, configKey string, log *zap.Logg
 		// events
 		eventBus: eventBus,
 		id:       id,
-
-		delayed: new(int64(0)),
 
 		publishChan: make(chan *amqp.Channel, 1),
 		stateChan:   make(chan *amqp.Channel, 1),
@@ -265,13 +263,11 @@ func FromPipeline(tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *
 
 	eventBus, id := events.NewEventBus()
 	jb := &Driver{
-		prop:    prop,
-		tracer:  tracer,
-		log:     log,
-		pq:      pq,
-		stopCh:  make(chan struct{}, 1),
-		delayed: new(int64(0)),
-
+		prop:   prop,
+		tracer: tracer,
+		log:    log,
+		pq:     pq,
+		stopCh: make(chan struct{}, 1),
 		// events
 		eventBus: eventBus,
 		id:       id,
@@ -438,7 +434,7 @@ func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 	// run listener
 	d.listener(deliv)
 
-	atomic.StoreUint32(&d.listeners, 1)
+	d.listeners.Store(1)
 	d.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
 	return nil
 }
@@ -470,8 +466,8 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 					Pipeline: pipe.Name(),
 					Driver:   pipe.Driver(),
 					Queue:    conf.queueName(),
-					Delayed:  atomic.LoadInt64(d.delayed),
-					Ready:    ready(atomic.LoadUint32(&d.listeners)),
+					Delayed:  d.delayed.Load(),
+					Ready:    ready(d.listeners.Load()),
 				}, nil
 			}
 
@@ -489,8 +485,8 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 					Priority: uint64(pipe.Priority()), //nolint:gosec
 					Pipeline: pipe.Name(),
 					Driver:   pipe.Driver(),
-					Delayed:  atomic.LoadInt64(d.delayed),
-					Ready:    ready(atomic.LoadUint32(&d.listeners)),
+					Delayed:  d.delayed.Load(),
+					Ready:    ready(d.listeners.Load()),
 				}, nil
 			}
 
@@ -517,8 +513,8 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 			Driver:   pipe.Driver(),
 			Queue:    q.Name,
 			Active:   int64(q.Messages),
-			Delayed:  atomic.LoadInt64(d.delayed),
-			Ready:    ready(atomic.LoadUint32(&d.listeners)),
+			Delayed:  d.delayed.Load(),
+			Ready:    ready(d.listeners.Load()),
 		}, nil
 
 	case <-ctx.Done():
@@ -542,7 +538,7 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 	}
 
 	// atomically check and decrement the number of listeners
-	if !atomic.CompareAndSwapUint32(&d.listeners, 1, 0) {
+	if !d.listeners.CompareAndSwap(1, 0) {
 		return errors.Str("no active listeners, nothing to pause")
 	}
 
@@ -591,7 +587,7 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 	defer d.mu.Unlock()
 
 	// no active listeners
-	if atomic.LoadUint32(&d.listeners) == 1 {
+	if d.listeners.Load() == 1 {
 		return errors.Str("amqp listener is already in the active state")
 	}
 
@@ -629,7 +625,7 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 	d.listener(deliv)
 
 	// increase the number of listeners
-	atomic.AddUint32(&d.listeners, 1)
+	d.listeners.Add(1)
 	d.log.Debug("pipeline was resumed",
 		zap.String("driver", pipe.Driver()),
 		zap.String("pipeline", pipe.Name()),
@@ -648,7 +644,7 @@ func (d *Driver) Stop(ctx context.Context) error {
 
 	d.eventBus.Unsubscribe(d.id)
 
-	if !atomic.CompareAndSwapUint64(&d.stopped, 0, 1) {
+	if !d.stopped.CompareAndSwap(0, 1) {
 		return nil
 	}
 
@@ -689,7 +685,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 
 		// handle timeouts
 		if msg.Options.DelayDuration() > 0 {
-			atomic.AddInt64(d.delayed, 1)
+			d.delayed.Add(1)
 			// TODO declare separate method for this if condition
 			// TODO dlx cache channel??
 			delayMs := int64(msg.Options.DelayDuration().Seconds() * 1000)
@@ -701,13 +697,13 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 				dlxExpires:    delayMs * 2,
 			})
 			if err != nil {
-				atomic.AddInt64(d.delayed, ^int64(0))
+				d.delayed.Add(^int64(0))
 				return errors.E(op, err)
 			}
 
 			err = pch.QueueBind(tmpQ, tmpQ, conf.exchangeName(), false, nil)
 			if err != nil {
-				atomic.AddInt64(d.delayed, ^int64(0))
+				d.delayed.Add(^int64(0))
 				return errors.E(op, err)
 			}
 
@@ -721,7 +717,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			})
 
 			if err != nil {
-				atomic.AddInt64(d.delayed, ^int64(0))
+				d.delayed.Add(^int64(0))
 				return errors.E(op, err)
 			}
 

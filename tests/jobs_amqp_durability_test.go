@@ -68,12 +68,10 @@ func TestDurabilityAMQP(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -97,7 +95,7 @@ func TestDurabilityAMQP(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	helpers.DisableProxy("redial", t)
@@ -162,12 +160,10 @@ func TestDurabilityAMQPV2(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -191,7 +187,7 @@ func TestDurabilityAMQPV2(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	time.Sleep(time.Second * 3)
 	helpers.DisableProxy("redial", t)
@@ -257,12 +253,10 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -286,7 +280,7 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	address := "127.0.0.1:6001"
 	time.Sleep(time.Second * 2)
@@ -371,12 +365,10 @@ func TestDurabilityAMQP_NoQueueV2(t *testing.T) {
 	signal.Notify(sig, os.Interrupt, syscall.SIGINT, syscall.SIGTERM)
 
 	wg := &sync.WaitGroup{}
-	wg.Add(1)
 
 	stopCh := make(chan struct{}, 1)
 
-	go func() {
-		defer wg.Done()
+	wg.Go(func() {
 		for {
 			select {
 			case e := <-ch:
@@ -400,7 +392,7 @@ func TestDurabilityAMQP_NoQueueV2(t *testing.T) {
 				return
 			}
 		}
-	}()
+	})
 
 	address := "127.0.0.1:6001"
 	time.Sleep(time.Second * 2)

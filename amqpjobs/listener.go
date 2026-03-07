@@ -2,7 +2,6 @@ package amqpjobs
 
 import (
 	"context"
-	"sync/atomic"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
@@ -35,7 +34,7 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 
 		d.log.Debug("delivery channel was closed, leaving the AMQP listener")
 		// atomically try to decrement the listener counter; if already 0 (e.g., Pause did it), skip
-		_ = atomic.CompareAndSwapUint32(&d.listeners, 1, 0)
-		d.log.Debug("number of listeners", zap.Uint32("listeners", atomic.LoadUint32(&d.listeners)))
+		_ = d.listeners.CompareAndSwap(1, 0)
+		d.log.Debug("number of listeners", zap.Uint32("listeners", d.listeners.Load()))
 	}()
 }

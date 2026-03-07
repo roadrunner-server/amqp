@@ -2,7 +2,6 @@ package amqpjobs
 
 import (
 	"fmt"
-	"sync/atomic"
 	"time"
 
 	"github.com/cenkalti/backoff/v4"
@@ -39,7 +38,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint64(&d.stopped) == 1 {
+				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close connection channel]: channel is not closed, but driver is stopped")
 					return
 				}
@@ -64,7 +63,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint64(&d.stopped) == 1 {
+				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close consume channel]: channel is not closed, but driver is stopped")
 					return
 				}
@@ -89,7 +88,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint64(&d.stopped) == 1 {
+				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close publish channel]: channel is not closed, but driver is stopped")
 					return
 				}
@@ -114,7 +113,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// stopped
-				if atomic.LoadUint64(&d.stopped) == 1 {
+				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close statistic channel]: channel is not closed, but driver is stopped")
 					return
 				}
@@ -144,7 +143,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// wait for the listener to stop
-				for atomic.CompareAndSwapUint32(&d.listeners, 1, 0) {
+				for d.listeners.CompareAndSwap(1, 0) {
 					time.Sleep(time.Millisecond)
 				}
 
@@ -289,7 +288,7 @@ func (d *Driver) redial(rm *redialMsg) {
 
 		// we should restore the listener only when we previously had an active listener
 		// OR if we get a Consume Closed type of the error
-		if atomic.LoadUint32(&d.listeners) == 1 || rm.t == ConsumeCloseType {
+		if d.listeners.Load() == 1 || rm.t == ConsumeCloseType {
 			// redeclare consume channel
 			d.consumeChan, err = d.conn.Channel()
 			if err != nil {
@@ -323,7 +322,7 @@ func (d *Driver) redial(rm *redialMsg) {
 				return err
 			}
 
-			atomic.StoreUint32(&d.listeners, 1)
+			d.listeners.Store(1)
 			d.listener(deliv)
 			d.log.Info("consumer restored successfully")
 		}

@@ -31,7 +31,7 @@ type Item struct {
 	// Headers with key-values pairs
 	headers map[string][]string
 	// Options contain a set of PipelineOptions specific to job execution. Can be empty.
-	Options *Options `json:"options,omitempty"`
+	Options *Options `json:"options,omitzero"`
 }
 
 // Options carry information about how to handle a given job.
@@ -40,16 +40,16 @@ type Options struct {
 	// pointer to distinguish 0 as a priority and nil as a priority not set
 	Priority int64 `json:"priority"`
 	// Pipeline manually specified pipeline.
-	Pipeline string `json:"pipeline,omitempty"`
+	Pipeline string `json:"pipeline,omitzero"`
 	// Delay defines time duration to delay execution for. Defaults to none.
-	Delay int `json:"delay,omitempty"`
+	Delay int `json:"delay,omitzero"`
 	// AutoAck option
 	AutoAck bool `json:"auto_ack"`
 	// AMQP Queue
-	Queue string `json:"queue,omitempty"`
+	Queue string `json:"queue,omitzero"`
 
 	// private
-	stopped *uint64
+	stopped *atomic.Uint64
 	// ack delegates an acknowledgement through the Acknowledger interface that the client or server has finished work on a delivery
 	ack func(multiply bool) error
 
@@ -63,7 +63,7 @@ type Options struct {
 	requeueFn func(context.Context, *Item) error
 
 	// delayed jobs TODO(rustatian): figure out how to get stats from the DLX
-	delayed     *int64
+	delayed     *atomic.Int64
 	multipleAck bool
 	requeue     bool
 }
@@ -123,17 +123,17 @@ func (i *Item) Context() ([]byte, error) {
 }
 
 func (i *Item) Ack() error {
-	if atomic.LoadUint64(i.Options.stopped) == 1 {
+	if i.Options.stopped.Load() == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 	if i.Options.Delay > 0 {
-		atomic.AddInt64(i.Options.delayed, ^int64(0))
+		i.Options.delayed.Add(^int64(0))
 	}
 	return i.Options.ack(i.Options.multipleAck)
 }
 
 func (i *Item) NackWithOptions(requeue bool, delay int) error {
-	if atomic.LoadUint64(i.Options.stopped) == 1 {
+	if i.Options.stopped.Load() == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 
@@ -152,22 +152,22 @@ func (i *Item) NackWithOptions(requeue bool, delay int) error {
 }
 
 func (i *Item) Nack() error {
-	if atomic.LoadUint64(i.Options.stopped) == 1 {
+	if i.Options.stopped.Load() == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 	if i.Options.Delay > 0 {
-		atomic.AddInt64(i.Options.delayed, ^int64(0))
+		i.Options.delayed.Add(^int64(0))
 	}
 	return i.Options.nack(false, i.Options.requeue)
 }
 
 // Requeue with the provided delay, handled by the Nack
 func (i *Item) Requeue(headers map[string][]string, delay int) error {
-	if atomic.LoadUint64(i.Options.stopped) == 1 {
+	if i.Options.stopped.Load() == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 	if i.Options.Delay > 0 {
-		atomic.AddInt64(i.Options.delayed, ^int64(0))
+		i.Options.delayed.Add(^int64(0))
 	}
 
 	// overwrite the delay
@@ -225,7 +225,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) *Item {
 	}
 
 	item.Options.stopped = &d.stopped
-	item.Options.delayed = d.delayed
+	item.Options.delayed = &d.delayed
 	// requeue func
 	item.Options.requeueFn = d.handleItem
 
