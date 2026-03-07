@@ -2,12 +2,9 @@ package amqp
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"net"
-	"net/http"
 	"net/rpc"
 	"os"
 	"os/signal"
@@ -37,12 +34,13 @@ import (
 	"github.com/roadrunner-server/jobs/v5"
 	"github.com/roadrunner-server/logger/v5"
 	"github.com/roadrunner-server/metrics/v5"
-	"github.com/roadrunner-server/otel/v5"
 	"github.com/roadrunner-server/resetter/v5"
 	rpcPlugin "github.com/roadrunner-server/rpc/v5"
 	"github.com/roadrunner-server/server/v5"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	"go.uber.org/zap"
 )
 
@@ -51,6 +49,23 @@ type mockConfigurer struct {
 	values map[string]any
 	errs   map[string]error
 }
+
+type inMemoryTracer struct {
+	tp  *sdktrace.TracerProvider
+	exp *tracetest.InMemoryExporter
+}
+
+func newInMemoryTracer(t *testing.T) *inMemoryTracer {
+	t.Helper()
+	exp := tracetest.NewInMemoryExporter()
+	tp := sdktrace.NewTracerProvider(sdktrace.WithSyncer(exp))
+	t.Cleanup(func() { _ = tp.Shutdown(context.Background()) })
+	return &inMemoryTracer{tp: tp, exp: exp}
+}
+
+func (m *inMemoryTracer) Init() error                      { return nil }
+func (m *inMemoryTracer) Name() string                     { return "inMemoryTracer" }
+func (m *inMemoryTracer) Tracer() *sdktrace.TracerProvider { return m.tp }
 
 type mockQueue struct{}
 
@@ -2520,13 +2535,15 @@ func TestAMQPOTEL(t *testing.T) {
 		Path:    "configs/.rr-amqp-otel.yaml",
 	}
 
+	tracer := newInMemoryTracer(t)
+
 	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
 		&rpcPlugin.Plugin{},
 		&jobs.Plugin{},
-		&otel.Plugin{},
+		tracer,
 		l,
 		&resetter.Plugin{},
 		&informer.Plugin{},
@@ -2585,17 +2602,17 @@ func TestAMQPOTEL(t *testing.T) {
 	stopCh <- struct{}{}
 	wg.Wait()
 
-	resp, err := http.Get("http://127.0.0.1:9411/api/v2/spans?serviceName=rr_test_amqp") //nolint:noctx
-	require.NoError(t, err)
-	require.NotNil(t, resp)
+	spans := tracer.exp.GetSpans()
+	spanNameSet := make(map[string]struct{}, len(spans))
+	for _, s := range spans {
+		spanNameSet[s.Name] = struct{}{}
+	}
+	uniqueNames := make([]string, 0, len(spanNameSet))
+	for name := range spanNameSet {
+		uniqueNames = append(uniqueNames, name)
+	}
+	slices.Sort(uniqueNames)
 
-	buf, err := io.ReadAll(resp.Body)
-	require.NoError(t, err)
-
-	var spans []string
-	err = json.Unmarshal(buf, &spans)
-	assert.NoError(t, err)
-	slices.Sort(spans)
 	expected := []string{
 		"amqp_listener",
 		"amqp_push",
@@ -2604,15 +2621,11 @@ func TestAMQPOTEL(t *testing.T) {
 		"jobs_listener",
 		"push",
 	}
-	assert.Equal(t, expected, spans)
+	assert.Equal(t, expected, uniqueNames)
 
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("job processing was started").Len())
 	assert.Equal(t, 1, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
-
-	t.Cleanup(func() {
-		_ = resp.Body.Close()
-	})
 }
