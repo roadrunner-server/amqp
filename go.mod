@@ -1,4 +1,4 @@
-module github.com/roadrunner-server/amqp/v5
+module github.com/roadrunner-server/amqp/v6
 
 go 1.26
 
