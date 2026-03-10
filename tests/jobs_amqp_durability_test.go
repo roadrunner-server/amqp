@@ -14,7 +14,7 @@ import (
 
 	toxiproxy "github.com/Shopify/toxiproxy/v2/client"
 	amqpDriver "github.com/roadrunner-server/amqp/v6"
-	jobsState "github.com/roadrunner-server/api/v4/plugins/v1/jobs"
+	jobsState "github.com/roadrunner-server/api-plugins/v6/jobs"
 	"github.com/roadrunner-server/config/v5"
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v5"

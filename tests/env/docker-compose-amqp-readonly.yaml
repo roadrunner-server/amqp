@@ -5,8 +5,3 @@ services:
     ports:
       - "127.0.0.1:5675:5672"
       - "127.0.0.1:15675:15672"
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
-      interval: 5s
-      timeout: 5s
-      retries: 30

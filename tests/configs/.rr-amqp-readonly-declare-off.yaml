@@ -1,0 +1,46 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6001
+
+server:
+  command: "php php_test_files/jobs/jobs_ok.php"
+  relay: "pipes"
+  relay_timeout: "20s"
+
+amqp:
+  addr: amqp://readonly:readonly@127.0.0.1:5675/
+
+logs:
+  level: debug
+  encoding: console
+  mode: development
+
+jobs:
+  num_pollers: 1
+  pipeline_size: 100000
+  timeout: 1
+  pool:
+    num_workers: 10
+    allocate_timeout: 60s
+    destroy_timeout: 1s
+
+  pipelines:
+    readonly-ok:
+      driver: amqp
+      config:
+        version: 2
+        prefetch: 100
+        priority: 1
+        exchange:
+          name: rr-readonly-exchange
+          type: direct
+          durable: true
+          declare: false
+        queue:
+          name: rr-readonly-queue
+          routing_key: rr-readonly-key
+          durable: true
+          declare: false
+
+  consume: [ "readonly-ok" ]

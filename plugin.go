@@ -5,6 +5,8 @@
 package amqp
 
 import (
+	"context"
+
 	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
 
 	"github.com/roadrunner-server/amqp/v6/amqpjobs"
@@ -15,6 +17,8 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 )
+
+var _ jobs.Constructor = (*Plugin)(nil)
 
 const pluginName string = "amqp"
 
@@ -62,11 +66,11 @@ func (p *Plugin) Collects() []*dep.In {
 }
 
 // DriverFromConfig constructs amqp driver from the .rr.yaml configuration
-func (p *Plugin) DriverFromConfig(configKey string, pq jobs.Queue, pipeline jobs.Pipeline) (jobs.Driver, error) {
-	return amqpjobs.FromConfig(p.tracer, configKey, p.log, p.cfg, pipeline, pq)
+func (p *Plugin) DriverFromConfig(ctx context.Context, configKey string, pq jobs.Queue, pipeline jobs.Pipeline) (jobs.Driver, error) {
+	return amqpjobs.FromConfig(ctx, p.tracer, configKey, p.log, p.cfg, pipeline, pq)
 }
 
 // DriverFromPipeline constructs amqp driver from pipeline
-func (p *Plugin) DriverFromPipeline(pipe jobs.Pipeline, pq jobs.Queue) (jobs.Driver, error) {
-	return amqpjobs.FromPipeline(p.tracer, pipe, p.log, p.cfg, pq)
+func (p *Plugin) DriverFromPipeline(ctx context.Context, pipe jobs.Pipeline, pq jobs.Queue) (jobs.Driver, error) {
+	return amqpjobs.FromPipeline(ctx, p.tracer, pipe, p.log, p.cfg, pq)
 }
