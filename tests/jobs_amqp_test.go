@@ -41,12 +41,6 @@ import (
 	"go.uber.org/zap"
 )
 
-type mockConfigurer struct {
-	has    map[string]bool
-	values map[string]any
-	errs   map[string]error
-}
-
 type inMemoryTracer struct {
 	tp  *sdktrace.TracerProvider
 	exp *tracetest.InMemoryExporter
