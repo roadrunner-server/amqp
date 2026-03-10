@@ -72,7 +72,7 @@ jobs:
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/summary.out -covermode=atomic jobs_amqp_test.go
           docker compose -f env/docker-compose-amqp.yaml down
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-amqp
           path: ./tests/coverage-ci
@@ -126,7 +126,7 @@ jobs:
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/durability.out -covermode=atomic jobs_amqp_durability_test.go
           docker compose -f env/docker-compose-amqp.yaml down
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-durability
           path: ./tests/coverage-ci
@@ -180,7 +180,7 @@ jobs:
           go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=$(cat pkgs.txt) -coverprofile=./coverage-ci/readonly.out -covermode=atomic jobs_amqp_readonly_test.go
           docker compose -f env/docker-compose-amqp-readonly.yaml down
       - name: Archive code coverage results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-readonly
           path: ./tests/coverage-ci
