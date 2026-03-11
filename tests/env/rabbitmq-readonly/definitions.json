@@ -3,7 +3,7 @@
   "users": [
     {
       "name": "readonly",
-      "password_hash": "D3rJXKeM9yl3fJaBCRNuqhIwjOFCNBsBm8aqaRGBo3sGT0ZP",
+      "password_hash": "8VMU7/Pqhz8zt6BWSCaMbyuj2slz6N2RqJonXoQ9L0Uq2sAi",
       "hashing_algorithm": "rabbit_password_hashing_sha256",
       "tags": "management"
     }
