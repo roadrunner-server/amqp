@@ -135,7 +135,8 @@ func TestAMQPReadOnlyDeclareOn(t *testing.T) {
 
 	ch, err := cont.Serve()
 	if err != nil {
-		t.Fatal(err)
+		require.Contains(t, err.Error(), "ACCESS_REFUSED")
+		return
 	}
 
 	sig := make(chan os.Signal, 1)
@@ -176,4 +177,6 @@ func TestAMQPReadOnlyDeclareOn(t *testing.T) {
 
 	stopCh <- struct{}{}
 	wg.Wait()
+
+	t.Fatal("expected ACCESS_REFUSED error was not received")
 }
