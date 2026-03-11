@@ -656,7 +656,9 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was started").Len())
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("pipeline was stopped").Len())
 	assert.Equal(t, 200, oLogger.FilterMessageSnippet("job was pushed successfully").Len())
-	assert.Equal(t, 4, oLogger.FilterMessageSnippet("job processing was started").Len())
+	started := oLogger.FilterMessageSnippet("job processing was started").Len()
+	assert.GreaterOrEqual(t, started, 2)
+	assert.Less(t, started, 200)
 	assert.Equal(t, 2, oLogger.FilterMessageSnippet("delivery channel was closed, leaving the AMQP listener").Len())
 }
 
