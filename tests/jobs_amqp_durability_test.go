@@ -18,7 +18,7 @@ import (
 	"github.com/roadrunner-server/config/v5"
 	"github.com/roadrunner-server/endure/v2"
 	"github.com/roadrunner-server/informer/v5"
-	"github.com/roadrunner-server/jobs/v5"
+	"github.com/roadrunner-server/jobs/v6"
 	"github.com/roadrunner-server/logger/v5"
 	"github.com/roadrunner-server/resetter/v5"
 	rpcPlugin "github.com/roadrunner-server/rpc/v5"

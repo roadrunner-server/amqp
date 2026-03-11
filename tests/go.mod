@@ -15,7 +15,7 @@ require (
 	github.com/roadrunner-server/endure/v2 v2.6.2
 	github.com/roadrunner-server/goridge/v3 v3.8.3
 	github.com/roadrunner-server/informer/v5 v5.1.9
-	github.com/roadrunner-server/jobs/v5 v5.1.9
+	github.com/roadrunner-server/jobs/v6 v6.0.0-beta.1
 	github.com/roadrunner-server/logger/v5 v5.1.9
 	github.com/roadrunner-server/metrics/v5 v5.2.0
 	github.com/roadrunner-server/resetter/v5 v5.1.9
@@ -51,8 +51,10 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
+	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.1 // indirect
 	github.com/roadrunner-server/errors v1.4.1 // indirect
 	github.com/roadrunner-server/events v1.0.1 // indirect
+	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.1 // indirect
 	github.com/roadrunner-server/pool v1.1.3 // indirect
 	github.com/roadrunner-server/priority_queue v1.0.6 // indirect
 	github.com/roadrunner-server/tcplisten v1.5.2 // indirect
