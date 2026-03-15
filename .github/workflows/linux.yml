@@ -69,7 +69,7 @@ jobs:
           sleep 30
 
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverprofile=./coverage-ci/summary.out -covermode=atomic jobs_amqp_test.go
+          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/summary.out -covermode=atomic jobs_amqp_test.go
           docker compose -f env/docker-compose-amqp.yaml down
       - name: Archive code coverage results
         uses: actions/upload-artifact@v7
