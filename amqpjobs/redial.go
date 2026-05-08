@@ -8,7 +8,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/errors"
 	"github.com/roadrunner-server/events"
-	"go.uber.org/zap"
 )
 
 const (
@@ -139,7 +138,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// cancel new deliveries
 				err := pch.Cancel(d.config.Load().consumerID(), false)
 				if err != nil {
-					d.log.Error("consumer cancel", zap.Error(err), zap.String("consumerID", d.config.Load().consumerID()))
+					d.log.Error("consumer cancel", "error", err, "consumerID", d.config.Load().consumerID())
 				}
 
 				// wait for the listener to stop
@@ -154,31 +153,31 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					var n int
 					n, err = pch.QueueDelete(d.config.Load().queueName(), false, false, false)
 					if err != nil {
-						d.log.Error("queue delete", zap.Error(err))
+						d.log.Error("queue delete", "error", err)
 					}
-					d.log.Debug("number of purged messages", zap.Int("count", n))
+					d.log.Debug("number of purged messages", "count", n)
 				}
 
 				err = pch.Close()
 				if err != nil {
-					d.log.Error("publish channel close", zap.Error(err))
+					d.log.Error("publish channel close", "error", err)
 				}
 				err = stCh.Close()
 				if err != nil {
-					d.log.Error("state channel close", zap.Error(err))
+					d.log.Error("state channel close", "error", err)
 				}
 
 				if d.consumeChan != nil && !d.consumeChan.IsClosed() {
 					err = d.consumeChan.Close()
 					if err != nil {
-						d.log.Error("consume channel close", zap.Error(err))
+						d.log.Error("consume channel close", "error", err)
 					}
 				}
 
 				if d.conn != nil && !d.conn.IsClosed() {
 					err = d.conn.Close()
 					if err != nil {
-						d.log.Error("amqp connection closed", zap.Error(err))
+						d.log.Error("amqp connection closed", "error", err)
 					}
 				}
 
@@ -195,24 +194,24 @@ func (d *Driver) reset() {
 
 	err := pch.Close()
 	if err != nil {
-		d.log.Error("publish channel close", zap.Error(err))
+		d.log.Error("publish channel close", "error", err)
 	}
 	err = stCh.Close()
 	if err != nil {
-		d.log.Error("state channel close", zap.Error(err))
+		d.log.Error("state channel close", "error", err)
 	}
 
 	if d.consumeChan != nil {
 		err = d.consumeChan.Close()
 		if err != nil {
-			d.log.Error("consume channel close", zap.Error(err))
+			d.log.Error("consume channel close", "error", err)
 		}
 	}
 
 	if d.conn != nil && !d.conn.IsClosed() {
 		err = d.conn.Close()
 		if err != nil {
-			d.log.Error("amqp connection closed", zap.Error(err))
+			d.log.Error("amqp connection closed", "error", err)
 		}
 	}
 
@@ -237,7 +236,7 @@ func (d *Driver) redial(rm *redialMsg) {
 	t := time.Now().UTC()
 	pipe := *d.pipeline.Load()
 
-	d.log.Error("pipeline connection was closed, redialing", zap.Error(rm.err), zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t))
+	d.log.Error("pipeline connection was closed, redialing", "error", rm.err, "pipeline", pipe.Name(), "driver", pipe.Driver(), "start", t)
 
 	expb := backoff.NewExponentialBackOff()
 	// set the retry timeout (minutes)
@@ -254,7 +253,7 @@ func (d *Driver) redial(rm *redialMsg) {
 		// re-init connection
 		err = d.init()
 		if err != nil {
-			d.log.Error("amqp dial", zap.Error(err))
+			d.log.Error("amqp dial", "error", err)
 			return errors.E(op, err)
 		}
 
@@ -297,7 +296,7 @@ func (d *Driver) redial(rm *redialMsg) {
 
 			err = d.consumeChan.Qos(d.config.Load().Prefetch, 0, false)
 			if err != nil {
-				d.log.Error("QOS", zap.Error(err))
+				d.log.Error("QOS", "error", err)
 				return errors.E(op, err)
 			}
 
@@ -334,13 +333,13 @@ func (d *Driver) redial(rm *redialMsg) {
 
 	retryErr := backoff.Retry(operation, expb)
 	if retryErr != nil {
-		d.log.Error("backoff operation failed, pipeline will be recreated", zap.Error(retryErr))
+		d.log.Error("backoff operation failed, pipeline will be recreated", "error", retryErr)
 		// recreate pipeline on fail
 		d.eventBus.Send(events.NewEvent(events.EventJOBSDriverCommand, pipe.Name(), restartStr))
 		return
 	}
 
-	d.log.Info("connection was successfully restored", zap.String("pipeline", pipe.Name()), zap.String("driver", pipe.Driver()), zap.Time("start", t), zap.Int64("elapsed", time.Since(t).Milliseconds()))
+	d.log.Info("connection was successfully restored", "pipeline", pipe.Name(), "driver", pipe.Driver(), "start", t, "elapsed", time.Since(t).Milliseconds())
 
 	// restart redialer
 	d.redialer()

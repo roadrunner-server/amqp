@@ -2,15 +2,15 @@ package amqpjobs
 
 import (
 	"fmt"
+	"log/slog"
 	"math"
 	"strconv"
 	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
-	"go.uber.org/zap"
 )
 
-func convHeaders(h amqp.Table, log *zap.Logger) map[string][]string { //nolint:gocyclo
+func convHeaders(h amqp.Table, log *slog.Logger) map[string][]string { //nolint:gocyclo
 	ret := make(map[string][]string, len(h))
 	for k := range h {
 		// mut ret
@@ -20,7 +20,7 @@ func convHeaders(h amqp.Table, log *zap.Logger) map[string][]string { //nolint:g
 	return ret
 }
 
-func convHeadersAnyType(ret *map[string][]string, k string, header any, log *zap.Logger) {
+func convHeadersAnyType(ret *map[string][]string, k string, header any, log *slog.Logger) {
 	switch t := header.(type) {
 	case int:
 		(*ret)[k] = append((*ret)[k], strconv.Itoa(t))
@@ -75,7 +75,7 @@ func convHeadersAnyType(ret *map[string][]string, k string, header any, log *zap
 		(*ret)[k] = append((*ret)[k], t.Format(time.RFC3339))
 	default:
 		// we don't know what this is, so we'll just ignore it
-		log.Warn("unknown header type", zap.String("key", k), zap.Any("value", t))
+		log.Warn("unknown header type", "key", k, "value", t)
 	}
 }
 

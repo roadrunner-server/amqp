@@ -12,7 +12,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/roadrunner-server/api-plugins/v6/jobs"
 	"github.com/roadrunner-server/errors"
-	"go.uber.org/zap"
 )
 
 var _ jobs.Job = (*Item)(nil)
@@ -281,14 +280,14 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 
 	if _, ok := deliv.Headers[jobs.RRID].(string); !ok {
 		item.Ident = uuid.NewString()
-		d.log.Debug("missing header rr_id, generating new one", zap.String("assigned ID", item.Ident))
+		d.log.Debug("missing header rr_id, generating new one", "assigned ID", item.Ident)
 	} else {
 		item.Ident = deliv.Headers[jobs.RRID].(string)
 	}
 
 	if _, ok := deliv.Headers[jobs.RRJob].(string); !ok {
 		item.Job = auto
-		d.log.Debug("missing header rr_job, using the standard one", zap.String("assigned ID", item.Job))
+		d.log.Debug("missing header rr_job, using the standard one", "assigned ID", item.Job)
 	} else {
 		item.Job = deliv.Headers[jobs.RRJob].(string)
 	}
@@ -300,7 +299,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	if h, ok := deliv.Headers[jobs.RRHeaders].([]byte); ok {
 		err := json.Unmarshal(h, &item.headers)
 		if err != nil {
-			d.log.Warn("failed to unmarshal headers (should be JSON), continuing execution", zap.Any("headers", item.headers), zap.Error(err))
+			d.log.Warn("failed to unmarshal headers (should be JSON), continuing execution", "headers", item.headers, "error", err)
 		}
 	}
 
@@ -315,7 +314,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 		case int64:
 			item.Options.Delay = int(tt)
 		default:
-			d.log.Warn("unknown delay type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
+			d.log.Warn("unknown delay type", "want", []string{"int, int16, int32, int64"}, "actual", t)
 		}
 	}
 
@@ -333,7 +332,7 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 		case int64:
 			item.Options.Priority = tt
 		default:
-			d.log.Warn("unknown priority type", zap.Strings("want", []string{"int, int16, int32, int64"}), zap.Any("actual", t))
+			d.log.Warn("unknown priority type", "want", []string{"int, int16, int32, int64"}, "actual", t)
 		}
 	}
 

@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	stderr "errors"
 	"fmt"
+	"log/slog"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -23,7 +24,6 @@ import (
 	"go.opentelemetry.io/otel/propagation"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/trace"
-	"go.uber.org/zap"
 )
 
 const (
@@ -43,7 +43,7 @@ type Configurer interface {
 
 type Driver struct {
 	mu       sync.RWMutex
-	log      *zap.Logger
+	log      *slog.Logger
 	pq       jobs.Queue
 	pipeline atomic.Pointer[jobs.Pipeline]
 	tracer   *sdktrace.TracerProvider
@@ -73,7 +73,7 @@ type Driver struct {
 }
 
 // FromConfig initializes AMQP pipeline
-func FromConfig(_ context.Context, tracer *sdktrace.TracerProvider, configKey string, log *zap.Logger, cfg Configurer, pipeline jobs.Pipeline, pq jobs.Queue) (*Driver, error) {
+func FromConfig(_ context.Context, tracer *sdktrace.TracerProvider, configKey string, log *slog.Logger, cfg Configurer, pipeline jobs.Pipeline, pq jobs.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer")
 
 	if tracer == nil {
@@ -204,7 +204,7 @@ func FromConfig(_ context.Context, tracer *sdktrace.TracerProvider, configKey st
 }
 
 // FromPipeline initializes consumer from pipeline
-func FromPipeline(_ context.Context, tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *zap.Logger, cfg Configurer, pq jobs.Queue) (*Driver, error) {
+func FromPipeline(_ context.Context, tracer *sdktrace.TracerProvider, pipeline jobs.Pipeline, log *slog.Logger, cfg Configurer, pq jobs.Queue) (*Driver, error) {
 	const op = errors.Op("new_amqp_consumer_from_pipeline")
 	if tracer == nil {
 		tracer = sdktrace.NewTracerProvider()
@@ -232,7 +232,7 @@ func FromPipeline(_ context.Context, tracer *sdktrace.TracerProvider, pipeline j
 	// parse prefetch
 	prf, err := strconv.Atoi(pipeline.String(prefetch, "10"))
 	if err != nil {
-		log.Error("prefetch parse, driver will use default (10) prefetch", zap.String("prefetch", pipeline.String(prefetch, "10")))
+		log.Error("prefetch parse, driver will use default (10) prefetch", "prefetch", pipeline.String(prefetch, "10"))
 		prf = 10
 	}
 	conf.Prefetch = prf
@@ -287,7 +287,7 @@ func FromPipeline(_ context.Context, tracer *sdktrace.TracerProvider, pipeline j
 		var tp map[string]any
 		err = json.Unmarshal([]byte(v), &tp)
 		if err != nil {
-			log.Warn("failed to unmarshal headers", zap.String("value", v))
+			log.Warn("failed to unmarshal headers", "value", v)
 			return nil, errors.E(op, fmt.Errorf("failed to unmarshal headers: %w", err))
 		}
 
@@ -433,7 +433,7 @@ func (d *Driver) Run(ctx context.Context, p jobs.Pipeline) error {
 	d.consumeChan.NotifyClose(d.notifyCloseConsumeCh)
 	d.listener(deliv)
 	d.listeners.Store(1)
-	d.log.Debug("pipeline was started", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
+	d.log.Debug("pipeline was started", "driver", pipe.Driver(), "pipeline", pipe.Name(), "start", start, "elapsed", time.Since(start).Milliseconds())
 	return nil
 }
 
@@ -546,7 +546,7 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 
 	err := d.consumeChan.Cancel(d.config.Load().consumerID(), true)
 	if err != nil {
-		d.log.Error("cancel consume channel, forcing close", zap.Error(err))
+		d.log.Error("cancel consume channel, forcing close", "error", err)
 		errCl := d.consumeChan.Close()
 		if errCl != nil {
 			return stderr.Join(errCl, err)
@@ -555,10 +555,10 @@ func (d *Driver) Pause(ctx context.Context, p string) error {
 	}
 
 	d.log.Debug("pipeline was paused",
-		zap.String("driver", pipe.Driver()),
-		zap.String("pipeline", pipe.Name()),
-		zap.Time("start", start),
-		zap.Int64("elapsed", time.Since(start).Milliseconds()),
+		"driver", pipe.Driver(),
+		"pipeline", pipe.Name(),
+		"start", start,
+		"elapsed", time.Since(start).Milliseconds(),
 	)
 
 	return nil
@@ -623,11 +623,11 @@ func (d *Driver) Resume(ctx context.Context, p string) error {
 	// increase the listener counter
 	d.listeners.Store(1)
 	d.log.Debug("pipeline was resumed",
-		zap.String("driver", pipe.Driver()),
-		zap.String("pipeline", pipe.Name()),
-		zap.Time("start", start),
-		zap.Int64("elapsed", time.Since(start).Milliseconds()),
-		zap.Int64("listeners", int64(d.listeners.Load())),
+		"driver", pipe.Driver(),
+		"pipeline", pipe.Name(),
+		"start", start,
+		"elapsed", time.Since(start).Milliseconds(),
+		"listeners", int64(d.listeners.Load()),
 	)
 
 	return nil
@@ -655,7 +655,7 @@ func (d *Driver) Stop(ctx context.Context) error {
 	// remove all pending JOBS associated with the pipeline
 	d.pq.Remove(pipe.Name())
 
-	d.log.Debug("pipeline was stopped", zap.String("driver", pipe.Driver()), zap.String("pipeline", pipe.Name()), zap.Time("start", start), zap.Int64("elapsed", time.Since(start).Milliseconds()))
+	d.log.Debug("pipeline was stopped", "driver", pipe.Driver(), "pipeline", pipe.Name(), "start", start, "elapsed", time.Since(start).Milliseconds())
 	return nil
 }
 

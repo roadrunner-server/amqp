@@ -1,11 +1,12 @@
 package amqpjobs
 
 import (
+	"log/slog"
+	"os"
 	"testing"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestConv(t *testing.T) {
@@ -34,8 +35,7 @@ func TestConv(t *testing.T) {
 	table["foo"] = float32(2.3)
 	table["foo2"] = 2.3
 
-	log, err := zap.NewDevelopment()
-	require.NoError(t, err)
+	log := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug}))
 	ret := convHeaders(table, log)
 
 	require.Equal(t, ret["foo"], []string{"2.30000"})

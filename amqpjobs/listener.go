@@ -6,7 +6,6 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
-	"go.uber.org/zap"
 )
 
 func (d *Driver) listener(deliv <-chan amqp.Delivery) {
@@ -35,6 +34,6 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 		d.log.Debug("delivery channel was closed, leaving the AMQP listener")
 		// atomically try to decrement the listener counter; if already 0 (e.g., Pause did it), skip
 		_ = d.listeners.CompareAndSwap(1, 0)
-		d.log.Debug("number of listeners", zap.Uint32("listeners", d.listeners.Load()))
+		d.log.Debug("number of listeners", "listeners", d.listeners.Load())
 	}()
 }
