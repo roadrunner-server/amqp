@@ -7,9 +7,9 @@ toolchain go1.26.0
 require (
 	github.com/Shopify/toxiproxy/v2 v2.12.0
 	github.com/google/uuid v1.6.0
-	github.com/rabbitmq/amqp091-go v1.10.0
+	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/roadrunner-server/amqp/v6 v6.0.0
-	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/api/v4 v4.23.0
 	github.com/roadrunner-server/config/v5 v5.1.9
 	github.com/roadrunner-server/endure/v2 v2.6.2
@@ -22,9 +22,9 @@ require (
 	github.com/roadrunner-server/rpc/v5 v5.1.9
 	github.com/roadrunner-server/server/v5 v5.2.10
 	github.com/stretchr/testify v1.11.1
-	go.opentelemetry.io/otel/sdk v1.42.0
-	go.uber.org/zap v1.27.1
-	google.golang.org/genproto v0.0.0-20260226221140-a57be14db171
+	go.opentelemetry.io/otel/sdk v1.43.0
+	go.uber.org/zap v1.28.0
+	google.golang.org/genproto v0.0.0-20260504160031-60b97b32f348
 )
 
 replace github.com/roadrunner-server/amqp/v6 => ../
@@ -52,7 +52,7 @@ require (
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
 	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.1 // indirect
-	github.com/roadrunner-server/errors v1.4.1 // indirect
+	github.com/roadrunner-server/errors v1.5.0 // indirect
 	github.com/roadrunner-server/events v1.0.1 // indirect
 	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.1 // indirect
 	github.com/roadrunner-server/pool v1.1.3 // indirect
@@ -71,16 +71,16 @@ require (
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
-	go.opentelemetry.io/contrib/propagators/jaeger v1.42.0 // indirect
-	go.opentelemetry.io/otel v1.42.0 // indirect
-	go.opentelemetry.io/otel/metric v1.42.0 // indirect
-	go.opentelemetry.io/otel/trace v1.42.0 // indirect
+	go.opentelemetry.io/contrib/propagators/jaeger v1.43.0 // indirect
+	go.opentelemetry.io/otel v1.43.0 // indirect
+	go.opentelemetry.io/otel/metric v1.43.0 // indirect
+	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sync v0.20.0 // indirect
-	golang.org/x/sys v0.42.0 // indirect
-	golang.org/x/text v0.34.0 // indirect
+	golang.org/x/sys v0.44.0 // indirect
+	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
