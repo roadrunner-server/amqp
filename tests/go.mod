@@ -11,16 +11,16 @@ require (
 	github.com/roadrunner-server/amqp/v6 v6.0.0
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/api/v4 v4.23.0
-	github.com/roadrunner-server/config/v5 v5.1.9
+	github.com/roadrunner-server/config/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/endure/v2 v2.6.2
 	github.com/roadrunner-server/goridge/v3 v3.8.3
-	github.com/roadrunner-server/informer/v5 v5.1.9
+	github.com/roadrunner-server/informer/v6 v6.0.0-beta.1
 	github.com/roadrunner-server/jobs/v6 v6.0.0-beta.1
-	github.com/roadrunner-server/logger/v5 v5.1.9
-	github.com/roadrunner-server/metrics/v5 v5.2.0
-	github.com/roadrunner-server/resetter/v5 v5.1.9
-	github.com/roadrunner-server/rpc/v5 v5.1.9
-	github.com/roadrunner-server/server/v5 v5.2.10
+	github.com/roadrunner-server/logger/v6 v6.0.0-beta.2
+	github.com/roadrunner-server/metrics/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/resetter/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/rpc/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/server/v6 v6.0.0-beta.1
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.uber.org/zap v1.28.0
@@ -40,7 +40,7 @@ require (
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/goccy/go-json v0.10.5 // indirect
+	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
@@ -56,6 +56,7 @@ require (
 	github.com/roadrunner-server/events v1.0.1 // indirect
 	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.1 // indirect
 	github.com/roadrunner-server/pool v1.1.3 // indirect
+	github.com/roadrunner-server/pool/v2 v2.0.0-beta.1 // indirect
 	github.com/roadrunner-server/priority_queue v1.0.6 // indirect
 	github.com/roadrunner-server/tcplisten v1.5.2 // indirect
 	github.com/sagikazarmark/locafero v0.12.0 // indirect
@@ -76,12 +77,12 @@ require (
 	go.opentelemetry.io/otel/metric v1.43.0 // indirect
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
 	golang.org/x/text v0.35.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
-	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
