@@ -10,17 +10,17 @@ require (
 	github.com/rabbitmq/amqp091-go v1.11.0
 	github.com/roadrunner-server/amqp/v6 v6.0.0
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.2
-	github.com/roadrunner-server/api/v4 v4.23.0
+	github.com/roadrunner-server/api/v4 v4.24.0
 	github.com/roadrunner-server/config/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/endure/v2 v2.6.2
 	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.1
 	github.com/roadrunner-server/informer/v6 v6.0.0-beta.1
 	github.com/roadrunner-server/jobs/v6 v6.0.0-beta.6
-	github.com/roadrunner-server/logger/v6 v6.0.0-beta.2
-	github.com/roadrunner-server/metrics/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/logger/v6 v6.0.0-beta.3
+	github.com/roadrunner-server/metrics/v6 v6.0.0-beta.3
 	github.com/roadrunner-server/resetter/v6 v6.0.0-beta.1
-	github.com/roadrunner-server/rpc/v6 v6.0.0-beta.1
-	github.com/roadrunner-server/server/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/rpc/v6 v6.0.0-beta.3
+	github.com/roadrunner-server/server/v6 v6.0.0-beta.4
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/sdk v1.43.0
 	google.golang.org/genproto v0.0.0-20260504160031-60b97b32f348
@@ -33,16 +33,15 @@ require (
 	github.com/cenkalti/backoff/v4 v4.3.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/fatih/color v1.18.0 // indirect
-	github.com/fsnotify/fsnotify v1.9.0 // indirect
+	github.com/fatih/color v1.19.0 // indirect
+	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/go-viper/mapstructure/v2 v2.5.0 // indirect
-	github.com/goccy/go-json v0.10.6 // indirect
 	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
-	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mattn/go-isatty v0.0.22 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
 	github.com/pelletier/go-toml/v2 v2.3.1 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
@@ -73,7 +72,6 @@ require (
 	go.opentelemetry.io/otel/trace v1.43.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.28.0 // indirect
-	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
 	golang.org/x/net v0.54.0 // indirect

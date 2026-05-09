@@ -14,11 +14,6 @@ import (
 	"testing"
 	"time"
 
-	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
-
-	"tests/helpers"
-	mocklogger "tests/mock"
-
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	amqpDriver "github.com/roadrunner-server/amqp/v6"
@@ -38,6 +33,9 @@ import (
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
+	"tests/helpers"
+	mocklogger "tests/mock"
 )
 
 type inMemoryTracer struct {
