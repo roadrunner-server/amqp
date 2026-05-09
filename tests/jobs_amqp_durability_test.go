@@ -25,7 +25,6 @@ import (
 	"github.com/roadrunner-server/server/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 func TestDurabilityAMQP(t *testing.T) {
@@ -226,7 +225,7 @@ func TestDurabilityAMQP_NoQueue(t *testing.T) {
 		Path:    "configs/.rr-amqp-durability-no-queue.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err = cont.RegisterAll(
 		l,
 		cfg,
@@ -338,7 +337,7 @@ func TestDurabilityAMQP_NoQueueV2(t *testing.T) {
 		Path:    "configs/.rr-amqp-durability-no-queue-v2.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err = cont.RegisterAll(
 		l,
 		cfg,

@@ -38,7 +38,6 @@ import (
 	"github.com/stretchr/testify/require"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
-	"go.uber.org/zap"
 )
 
 type inMemoryTracer struct {
@@ -67,7 +66,7 @@ func TestAMQPFanoutQueueName(t *testing.T) {
 		Path:    "configs/.rr-amqp-fanout.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		l,
 		cfg,
@@ -148,7 +147,7 @@ func TestAMQPHeaders(t *testing.T) {
 		Path:    "configs/.rr-amqp-headers.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -228,7 +227,7 @@ func TestAMQPHeadersV2(t *testing.T) {
 		Path:    "configs/.rr-amqp-headers-v2.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -308,7 +307,7 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 		Path:    "configs/.rr-amqp-xroutingkey.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -416,7 +415,7 @@ func TestAMQPDeclareHeaders(t *testing.T) {
 		Path:    "configs/.rr-amqp-headers-declare.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -503,7 +502,7 @@ func TestAMQPInitTLS(t *testing.T) {
 		Path:    "configs/.rr-amqp-init-tls.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -584,7 +583,7 @@ func TestAMQPRemoveAllFromPQ(t *testing.T) {
 		Path:    "configs/.rr-amqp-pq.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -670,7 +669,7 @@ func TestAMQP20Pipelines(t *testing.T) {
 		Path:    "configs/.rr-amqp-parallel.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		l,
 		cfg,
@@ -776,7 +775,7 @@ func TestAMQPBug1792(t *testing.T) {
 		Path:    "configs/.rr-amqp-bug-1792.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		l,
 		cfg,
@@ -856,7 +855,7 @@ func TestAMQPInit(t *testing.T) {
 		Path:    "configs/.rr-amqp-init.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -936,7 +935,7 @@ func TestAMQPInitV2(t *testing.T) {
 		Path:    "configs/.rr-amqp-init-v2.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1016,7 +1015,7 @@ func TestAMQPRoutingQueue(t *testing.T) {
 		Version: "2024.1.0",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1097,7 +1096,7 @@ func TestAMQPRoutingQueueV2(t *testing.T) {
 		Version: "2024.1.0",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1178,7 +1177,7 @@ func TestAMQPReset(t *testing.T) {
 		Path:    "configs/.rr-amqp-init.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1264,7 +1263,7 @@ func TestAMQPDeclare(t *testing.T) {
 		Path:    "configs/.rr-amqp-declare.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1357,7 +1356,7 @@ func TestAMQPDeclareDurable(t *testing.T) {
 		Path:    "configs/.rr-amqp-declare.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1442,7 +1441,7 @@ func TestAMQPJobsError(t *testing.T) {
 		Path:    "configs/.rr-amqp-jobs-err.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1557,7 +1556,7 @@ func TestAMQPStats(t *testing.T) {
 		Path:    "configs/.rr-amqp-declare.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1677,7 +1676,7 @@ func TestAMQPBadResp(t *testing.T) {
 		Path:    "configs/.rr-amqp-init-br.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1760,7 +1759,7 @@ func TestAMQPSlow(t *testing.T) {
 		Path:    "configs/.rr-amqp-slow.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		l,
 		cfg,
@@ -1851,7 +1850,7 @@ func TestAMQPSlowAutoAck(t *testing.T) {
 		Path:    "configs/.rr-amqp-slow.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -1945,7 +1944,7 @@ func TestAMQPRawPayload(t *testing.T) {
 		Path:    "configs/.rr-amqp-raw.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},
@@ -2092,7 +2091,7 @@ func TestAMQPOTEL(t *testing.T) {
 
 	tracer := newInMemoryTracer(t)
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		cfg,
 		&server.Plugin{},

@@ -23,7 +23,6 @@ import (
 	"github.com/roadrunner-server/server/v6"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"go.uber.org/zap"
 )
 
 // TestAMQPReadOnlyDeclareOff verifies that a readonly AMQP user (configure="^$")
@@ -36,7 +35,7 @@ func TestAMQPReadOnlyDeclareOff(t *testing.T) {
 		Path:    "configs/.rr-amqp-readonly-declare-off.yaml",
 	}
 
-	l, oLogger := mocklogger.ZapTestLogger(zap.DebugLevel)
+	l, oLogger := mocklogger.SlogTestLogger(slog.LevelDebug)
 	err := cont.RegisterAll(
 		l,
 		cfg,
