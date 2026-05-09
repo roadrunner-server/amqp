@@ -13,9 +13,9 @@ require (
 	github.com/roadrunner-server/api/v4 v4.23.0
 	github.com/roadrunner-server/config/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/endure/v2 v2.6.2
-	github.com/roadrunner-server/goridge/v3 v3.8.3
+	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.1
 	github.com/roadrunner-server/informer/v6 v6.0.0-beta.1
-	github.com/roadrunner-server/jobs/v6 v6.0.0-beta.1
+	github.com/roadrunner-server/jobs/v6 v6.0.0-beta.6
 	github.com/roadrunner-server/logger/v6 v6.0.0-beta.2
 	github.com/roadrunner-server/metrics/v6 v6.0.0-beta.1
 	github.com/roadrunner-server/resetter/v6 v6.0.0-beta.1
@@ -50,11 +50,9 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.67.5 // indirect
 	github.com/prometheus/procfs v0.20.1 // indirect
-	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.1 // indirect
+	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.4 // indirect
 	github.com/roadrunner-server/errors v1.5.0 // indirect
 	github.com/roadrunner-server/events v1.0.1 // indirect
-	github.com/roadrunner-server/goridge/v4 v4.0.0-beta.1 // indirect
-	github.com/roadrunner-server/pool v1.1.3 // indirect
 	github.com/roadrunner-server/pool/v2 v2.0.0-beta.1 // indirect
 	github.com/roadrunner-server/priority_queue v1.0.6 // indirect
 	github.com/roadrunner-server/tcplisten v1.5.2 // indirect
@@ -67,8 +65,6 @@ require (
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/tklauser/go-sysconf v0.3.16 // indirect
 	github.com/tklauser/numcpus v0.11.0 // indirect
-	github.com/vmihailenco/msgpack/v5 v5.4.1 // indirect
-	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/auto/sdk v1.2.1 // indirect
 	go.opentelemetry.io/contrib/propagators/jaeger v1.43.0 // indirect
@@ -80,9 +76,12 @@ require (
 	go.uber.org/zap/exp v0.3.0 // indirect
 	go.yaml.in/yaml/v2 v2.4.4 // indirect
 	go.yaml.in/yaml/v3 v3.0.4 // indirect
+	golang.org/x/net v0.54.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.44.0 // indirect
-	golang.org/x/text v0.35.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260504160031-60b97b32f348 // indirect
+	google.golang.org/grpc v1.81.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
