@@ -17,8 +17,8 @@ require (
 	go.opentelemetry.io/otel v1.43.0
 	go.opentelemetry.io/otel/sdk v1.43.0
 	go.opentelemetry.io/otel/trace v1.43.0
-	golang.org/x/sys v0.44.0
-	google.golang.org/genproto v0.0.0-20260504160031-60b97b32f348
+	golang.org/x/sys v0.45.0
+	google.golang.org/genproto v0.0.0-20260523011958-0a33c5d7ca68
 )
 
 exclude (
