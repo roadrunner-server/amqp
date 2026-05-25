@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
-	"net/rpc"
 	"os"
 	"os/signal"
 	"slices"
@@ -14,14 +12,17 @@ import (
 	"testing"
 	"time"
 
+	"tests/helpers"
+	mocklogger "tests/mock"
+
+	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	amqpDriver "github.com/roadrunner-server/amqp/v6"
+	jobsProto "github.com/roadrunner-server/api-go/v6/jobs/v2"
 	apiJobs "github.com/roadrunner-server/api-plugins/v6/jobs"
-	jobsProto "github.com/roadrunner-server/api/v4/build/jobs/v1"
 	"github.com/roadrunner-server/config/v6"
 	"github.com/roadrunner-server/endure/v2"
-	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/roadrunner-server/informer/v6"
 	"github.com/roadrunner-server/jobs/v6"
 	"github.com/roadrunner-server/logger/v6"
@@ -34,8 +35,6 @@ import (
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.opentelemetry.io/otel/sdk/trace/tracetest"
 	_ "google.golang.org/genproto/protobuf/ptype" //nolint:revive,nolintlint
-	"tests/helpers"
-	mocklogger "tests/mock"
 )
 
 type inMemoryTracer struct {
@@ -367,9 +366,9 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 		Job:     "some/php/namespace",
 		Id:      uuid.NewString(),
 		Payload: []byte(`{"hello":"world"}`),
-		Headers: map[string]*jobsProto.HeaderValue{
-			"test":          {Value: []string{"test2"}},
-			"x-routing-key": {Value: []string{"super-routing-key"}},
+		Headers: map[string]*jobsProto.JobHeaderValue{
+			"test":          {Values: []string{"test2"}},
+			"x-routing-key": {Values: []string{"super-routing-key"}},
 		},
 		Options: &jobsProto.Options{
 			AutoAck:  false,
@@ -378,17 +377,8 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 		},
 	}
 
-	var d net.Dialer
-	conn, err := d.DialContext(t.Context(), "tcp", "127.0.0.1:6001")
-	require.NoError(t, err)
-	client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
-
-	req := &jobsProto.PushRequest{
-		Job: jb,
-	}
-
-	er := &jobsProto.Empty{}
-	err = client.Call("jobs.Push", req, er)
+	client := helpers.NewJobsClient(t, "127.0.0.1:6001")
+	_, err = client.Push(t.Context(), connect.NewRequest(&jobsProto.PushRequest{Job: jb}))
 	require.NoError(t, err)
 
 	time.Sleep(time.Second * 3)
