@@ -295,11 +295,13 @@ func FromPipeline(_ context.Context, tracer *sdktrace.TracerProvider, pipeline j
 	}
 
 	if pipeline.Has(exchangeDeclare) {
-		conf.V2Config.ExchangeConfig.Declare = new(pipeline.Bool(exchangeDeclare, true))
+		v := pipeline.Bool(exchangeDeclare, true)
+		conf.V2Config.ExchangeConfig.Declare = &v
 	}
 
 	if pipeline.Has(queueDeclare) {
-		conf.V2Config.QueueConfig.Declare = new(pipeline.Bool(queueDeclare, true))
+		v := pipeline.Bool(queueDeclare, true)
+		conf.V2Config.QueueConfig.Declare = &v
 	}
 
 	err = conf.InitDefault()
@@ -694,13 +696,13 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 				dlxExpires:    delayMs * 2,
 			})
 			if err != nil {
-				d.delayed.Add(^int64(0))
+				d.delayed.Add(-1)
 				return errors.E(op, err)
 			}
 
 			err = pch.QueueBind(tmpQ, tmpQ, conf.exchangeName(), false, nil)
 			if err != nil {
-				d.delayed.Add(^int64(0))
+				d.delayed.Add(-1)
 				return errors.E(op, err)
 			}
 
@@ -714,7 +716,7 @@ func (d *Driver) handleItem(ctx context.Context, msg *Item) error {
 			})
 
 			if err != nil {
-				d.delayed.Add(^int64(0))
+				d.delayed.Add(-1)
 				return errors.E(op, err)
 			}
 
