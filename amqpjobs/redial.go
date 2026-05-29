@@ -143,7 +143,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 				// wait for the listener to stop
-				for !d.listeners.CompareAndSwap(1, 0) {
+				for d.listeners.Load() != 0 {
 					time.Sleep(time.Millisecond)
 				}
 

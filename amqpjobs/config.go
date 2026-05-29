@@ -374,7 +374,7 @@ func (c *config) consumerID() string {
 func (c *config) validateTLS(op errors.Op) error {
 	if _, err := os.Stat(c.TLS.Key); err != nil {
 		if stderrors.Is(err, fs.ErrNotExist) {
-			return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
+			return errors.E(op, errors.Errorf("key file '%s' does not exist", c.TLS.Key))
 		}
 
 		return errors.E(op, err)
@@ -382,7 +382,7 @@ func (c *config) validateTLS(op errors.Op) error {
 
 	if _, err := os.Stat(c.TLS.Cert); err != nil {
 		if stderrors.Is(err, fs.ErrNotExist) {
-			return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+			return errors.E(op, errors.Errorf("cert file '%s' does not exist", c.TLS.Cert))
 		}
 
 		return errors.E(op, err)
@@ -392,7 +392,7 @@ func (c *config) validateTLS(op errors.Op) error {
 	if c.TLS.RootCA != "" {
 		if _, err := os.Stat(c.TLS.RootCA); err != nil {
 			if stderrors.Is(err, fs.ErrNotExist) {
-				return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
+				return errors.E(op, errors.Errorf("root ca path provided, but root ca file '%s' does not exist", c.TLS.RootCA))
 			}
 			return errors.E(op, err)
 		}
