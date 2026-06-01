@@ -126,7 +126,7 @@ func (i *Item) Ack() error {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 	if i.Options.Delay > 0 {
-		i.Options.delayed.Add(^int64(0))
+		i.Options.delayed.Add(-1)
 	}
 	return i.Options.ack(i.Options.multipleAck)
 }
@@ -155,7 +155,7 @@ func (i *Item) Nack() error {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 	if i.Options.Delay > 0 {
-		i.Options.delayed.Add(^int64(0))
+		i.Options.delayed.Add(-1)
 	}
 	return i.Options.nack(false, i.Options.requeue)
 }
@@ -166,7 +166,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int) error {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
 	}
 	if i.Options.Delay > 0 {
-		i.Options.delayed.Add(^int64(0))
+		i.Options.delayed.Add(-1)
 	}
 
 	// overwrite the delay
@@ -206,8 +206,7 @@ func (i *Item) Respond(_ []byte, _ string) error {
 func (d *Driver) fromDelivery(deliv amqp.Delivery) *Item {
 	item := d.unpack(deliv)
 
-	switch item.Options.AutoAck {
-	case true:
+	if item.Options.AutoAck {
 		d.log.Debug("using auto acknowledge for the job")
 		// stubs for ack/nack
 		item.Options.ack = func(bool) error {
@@ -217,7 +216,7 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) *Item {
 		item.Options.nack = func(bool, bool) error {
 			return nil
 		}
-	case false:
+	} else {
 		d.log.Debug("using driver's ack for the job")
 		item.Options.ack = deliv.Ack
 		item.Options.nack = deliv.Nack
@@ -278,22 +277,22 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 		},
 	}
 
-	if _, ok := deliv.Headers[jobs.RRID].(string); !ok {
+	if v, ok := deliv.Headers[jobs.RRID].(string); !ok {
 		item.Ident = uuid.NewString()
 		d.log.Debug("missing header rr_id, generating new one", "assigned ID", item.Ident)
 	} else {
-		item.Ident = deliv.Headers[jobs.RRID].(string)
+		item.Ident = v
 	}
 
-	if _, ok := deliv.Headers[jobs.RRJob].(string); !ok {
+	if v, ok := deliv.Headers[jobs.RRJob].(string); !ok {
 		item.Job = auto
 		d.log.Debug("missing header rr_job, using the standard one", "assigned ID", item.Job)
 	} else {
-		item.Job = deliv.Headers[jobs.RRJob].(string)
+		item.Job = v
 	}
 
-	if _, ok := deliv.Headers[jobs.RRPipeline].(string); ok {
-		item.Options.Pipeline = deliv.Headers[jobs.RRPipeline].(string)
+	if v, ok := deliv.Headers[jobs.RRPipeline].(string); ok {
+		item.Options.Pipeline = v
 	}
 
 	if h, ok := deliv.Headers[jobs.RRHeaders].([]byte); ok {

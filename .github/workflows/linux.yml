@@ -184,6 +184,44 @@ jobs:
         with:
           name: coverage-readonly
           path: ./tests/coverage-ci
+  amqp_unit_test:
+    name: Unit tests (Go ${{ matrix.go }}, OS ${{matrix.os}})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    strategy:
+      matrix:
+        go: [stable]
+        os: ["ubuntu-latest"]
+    steps:
+      - name: Set up Go ${{ matrix.go }}
+        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        with:
+          go-version: ${{ matrix.go }}
+      - name: Check out code
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+        uses: actions/cache@v5
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: ${{ runner.os }}-go-
+      - name: Install Go dependencies
+        run: go mod download
+      - name: Run unit tests with coverage
+        env:
+          GOWORK: off # scope ./... to the root module only (do not pull in the tests module)
+        run: |
+          mkdir ./coverage-ci
+          go test -race -tags=debug -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/unit.out -covermode=atomic ./...
+      - name: Archive code coverage results
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-unit
+          path: ./coverage-ci
   codecov:
     name: Upload codecov
     runs-on: ubuntu-latest
@@ -191,6 +229,7 @@ jobs:
       - amqp_test
       - amqp_durability_test
       - amqp_readonly_test
+      - amqp_unit_test
     timeout-minutes: 60
     steps:
       - name: Check out code

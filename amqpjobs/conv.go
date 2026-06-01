@@ -51,12 +51,7 @@ func convHeadersAnyType(ret *map[string][]string, k string, header any, log *slo
 	case []string:
 		(*ret)[k] = append((*ret)[k], t...)
 	case bool:
-		switch t {
-		case true:
-			(*ret)[k] = []string{"true"}
-		case false:
-			(*ret)[k] = []string{"false"}
-		}
+		(*ret)[k] = []string{strconv.FormatBool(t)}
 	case []byte:
 		(*ret)[k] = append((*ret)[k], string(t))
 	case []any:

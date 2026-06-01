@@ -135,14 +135,15 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				pch := <-d.publishChan
 				stCh := <-d.stateChan
 
-				// cancel new deliveries
-				err := pch.Cancel(d.config.Load().consumerID(), false)
-				if err != nil {
-					d.log.Error("consumer cancel", "error", err, "consumerID", d.config.Load().consumerID())
+				// cancel new deliveries on the consume channel (not the publish channel)
+				if d.consumeChan != nil {
+					if cancelErr := d.consumeChan.Cancel(d.config.Load().consumerID(), false); cancelErr != nil {
+						d.log.Error("consumer cancel", "error", cancelErr, "consumerID", d.config.Load().consumerID())
+					}
 				}
 
 				// wait for the listener to stop
-				for d.listeners.CompareAndSwap(1, 0) {
+				for d.listeners.Load() != 0 {
 					time.Sleep(time.Millisecond)
 				}
 
@@ -151,6 +152,7 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 
 				if d.config.Load().deleteQueueOnStopEnabled() {
 					var n int
+					var err error
 					n, err = pch.QueueDelete(d.config.Load().queueName(), false, false, false)
 					if err != nil {
 						d.log.Error("queue delete", "error", err)
@@ -158,25 +160,21 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 					d.log.Debug("number of purged messages", "count", n)
 				}
 
-				err = pch.Close()
-				if err != nil {
+				if err := pch.Close(); err != nil {
 					d.log.Error("publish channel close", "error", err)
 				}
-				err = stCh.Close()
-				if err != nil {
+				if err := stCh.Close(); err != nil {
 					d.log.Error("state channel close", "error", err)
 				}
 
 				if d.consumeChan != nil && !d.consumeChan.IsClosed() {
-					err = d.consumeChan.Close()
-					if err != nil {
+					if err := d.consumeChan.Close(); err != nil {
 						d.log.Error("consume channel close", "error", err)
 					}
 				}
 
 				if d.conn != nil && !d.conn.IsClosed() {
-					err = d.conn.Close()
-					if err != nil {
+					if err := d.conn.Close(); err != nil {
 						d.log.Error("amqp connection closed", "error", err)
 					}
 				}
@@ -240,7 +238,7 @@ func (d *Driver) redial(rm *redialMsg) {
 
 	expb := backoff.NewExponentialBackOff()
 	// set the retry timeout (minutes)
-	expb.MaxElapsedTime = time.Duration(d.config.Load().redialTimeoutSeconds()) * time.Second
+	expb.MaxElapsedTime = time.Duration(d.config.Load().RedialTimeout) * time.Second
 	operation := func() error {
 		var err error
 		d.conn, err = dial(d.config.Load().Addr, d.config.Load())

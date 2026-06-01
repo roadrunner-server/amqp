@@ -2,7 +2,8 @@ package amqpjobs
 
 import (
 	"crypto/tls"
-	"fmt"
+	stderrors "errors"
+	"io/fs"
 	"os"
 
 	"github.com/google/uuid"
@@ -206,7 +207,7 @@ func (c *v1config) InitDefault() error {
 	}
 
 	if c.ConsumerID == "" {
-		c.ConsumerID = fmt.Sprintf("roadrunner-%s", uuid.NewString())
+		c.ConsumerID = "roadrunner-" + uuid.NewString()
 	}
 
 	return nil
@@ -242,7 +243,7 @@ func (c *v2config) InitDefault() error {
 
 	// Keep consumer ID default format consistent with v1.
 	if c.QueueConfig.ConsumerID == "" {
-		c.QueueConfig.ConsumerID = fmt.Sprintf("roadrunner-%s", uuid.NewString())
+		c.QueueConfig.ConsumerID = "roadrunner-" + uuid.NewString()
 	}
 
 	return nil
@@ -363,10 +364,6 @@ func (c *config) requeueOnFailEnabled() bool {
 	return c.V1Config.RequeueOnFail
 }
 
-func (c *config) redialTimeoutSeconds() int {
-	return c.RedialTimeout
-}
-
 func (c *config) consumerID() string {
 	if c.Version == 2 {
 		return c.V2Config.QueueConfig.ConsumerID
@@ -376,16 +373,16 @@ func (c *config) consumerID() string {
 
 func (c *config) validateTLS(op errors.Op) error {
 	if _, err := os.Stat(c.TLS.Key); err != nil {
-		if os.IsNotExist(err) {
-			return errors.E(op, errors.Errorf("key file '%s' does not exists", c.TLS.Key))
+		if stderrors.Is(err, fs.ErrNotExist) {
+			return errors.E(op, errors.Errorf("key file '%s' does not exist", c.TLS.Key))
 		}
 
 		return errors.E(op, err)
 	}
 
 	if _, err := os.Stat(c.TLS.Cert); err != nil {
-		if os.IsNotExist(err) {
-			return errors.E(op, errors.Errorf("cert file '%s' does not exists", c.TLS.Cert))
+		if stderrors.Is(err, fs.ErrNotExist) {
+			return errors.E(op, errors.Errorf("cert file '%s' does not exist", c.TLS.Cert))
 		}
 
 		return errors.E(op, err)
@@ -394,8 +391,8 @@ func (c *config) validateTLS(op errors.Op) error {
 	// RootCA is optional, but if provided - check it
 	if c.TLS.RootCA != "" {
 		if _, err := os.Stat(c.TLS.RootCA); err != nil {
-			if os.IsNotExist(err) {
-				return errors.E(op, errors.Errorf("root ca path provided, but key file '%s' does not exists", c.TLS.RootCA))
+			if stderrors.Is(err, fs.ErrNotExist) {
+				return errors.E(op, errors.Errorf("root ca path provided, but root ca file '%s' does not exist", c.TLS.RootCA))
 			}
 			return errors.E(op, err)
 		}
