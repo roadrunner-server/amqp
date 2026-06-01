@@ -1,9 +1,11 @@
 package amqpjobs
 
 import (
+	"io"
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
 	amqp "github.com/rabbitmq/amqp091-go"
 	"github.com/stretchr/testify/require"
@@ -61,4 +63,23 @@ func TestConv(t *testing.T) {
 	require.Equal(t, ret["bt"], []string{"true"})
 
 	require.Equal(t, ret["bytes"], []string{"fooooooobbbbbb"})
+}
+
+func TestConvHeadersExtraTypes(t *testing.T) {
+	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ts := time.Date(2024, 1, 2, 3, 4, 5, 0, time.UTC)
+
+	table := amqp.Table{
+		"time":    ts,
+		"nested":  amqp.Table{"inner": "v"}, // recursion keys by the inner name
+		"slice":   []any{1, "two"},          // recursion keeps the outer key
+		"unknown": struct{ A int }{A: 1},    // hits the default (ignored) arm
+	}
+
+	ret := convHeaders(table, log)
+
+	require.Equal(t, []string{ts.Format(time.RFC3339)}, ret["time"])
+	require.Equal(t, []string{"v"}, ret["inner"])
+	require.Equal(t, []string{"1", "two"}, ret["slice"])
+	require.NotContains(t, ret, "unknown", "unknown header types must be dropped, not panicked on")
 }
