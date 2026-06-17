@@ -8,7 +8,7 @@ require (
 	connectrpc.com/connect v1.20.0
 	github.com/Shopify/toxiproxy/v2 v2.12.0
 	github.com/google/uuid v1.6.0
-	github.com/rabbitmq/amqp091-go v1.11.0
+	github.com/rabbitmq/amqp091-go v1.12.0
 	github.com/roadrunner-server/amqp/v6 v6.0.0
 	github.com/roadrunner-server/api-go/v6 v6.0.0-beta.12
 	github.com/roadrunner-server/api-plugins/v6 v6.0.0-beta.2
