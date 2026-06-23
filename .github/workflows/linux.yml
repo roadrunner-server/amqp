@@ -29,7 +29,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: sockets
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Get Composer Cache Directory
         id: composer-cache
         run: |
@@ -96,7 +96,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: sockets
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Get Composer Cache Directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
@@ -150,7 +150,7 @@ jobs:
           php-version: ${{ matrix.php }}
           extensions: sockets
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Get Composer Cache Directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
@@ -200,7 +200,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
@@ -233,7 +233,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Check out code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Download code coverage results
         uses: actions/download-artifact@v8
         with:
