@@ -1,54 +1,42 @@
 package helpers
 
 import (
-	"context"
-	"crypto/tls"
 	"net"
 	"net/http"
+	"net/rpc"
 	"slices"
 	"strings"
 	"testing"
 	"time"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	jobsProto "github.com/roadrunner-server/api-go/v6/jobs/v2"
-	"github.com/roadrunner-server/api-go/v6/jobs/v2/jobsV2connect"
 	resetterProto "github.com/roadrunner-server/api-go/v6/resetter/v1"
-	"github.com/roadrunner-server/api-go/v6/resetter/v1/resetterV1connect"
 	jobState "github.com/roadrunner-server/api-plugins/v6/jobs"
+	goridgeRpc "github.com/roadrunner-server/goridge/v4/pkg/rpc"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/net/http2"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
-func newHTTPClient(t *testing.T) *http.Client {
+func NewJobsClient(t *testing.T, address string) *rpc.Client {
 	t.Helper()
-	httpc := &http.Client{Transport: &http2.Transport{
-		AllowHTTP: true,
-		DialTLSContext: func(ctx context.Context, network, addr string, _ *tls.Config) (net.Conn, error) {
-			return new(net.Dialer).DialContext(ctx, network, addr)
-		},
-	}}
-	t.Cleanup(httpc.CloseIdleConnections)
-	return httpc
+	conn, err := new(net.Dialer).DialContext(t.Context(), "tcp", address)
+	require.NoError(t, err)
+	client := rpc.NewClientWithCodec(goridgeRpc.NewClientCodec(conn))
+	t.Cleanup(func() { _ = client.Close() })
+	return client
 }
 
-func NewJobsClient(t *testing.T, address string) jobsV2connect.JobsServiceClient {
+func NewResetterClient(t *testing.T, address string) *rpc.Client {
 	t.Helper()
-	return jobsV2connect.NewJobsServiceClient(newHTTPClient(t), "http://"+address)
-}
-
-func NewResetterClient(t *testing.T, address string) resetterV1connect.ResetterServiceClient {
-	t.Helper()
-	return resetterV1connect.NewResetterServiceClient(newHTTPClient(t), "http://"+address)
+	return NewJobsClient(t, address)
 }
 
 func ResumePipes(address string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
 		client := NewJobsClient(t, address)
-		_, err := client.Resume(t.Context(), connect.NewRequest(&jobsProto.Pipelines{Pipelines: slices.Clone(pipes)}))
+		err := client.Call("jobs.Resume", &jobsProto.Pipelines{Pipelines: slices.Clone(pipes)}, &jobsProto.JobsHandlerResponse{})
 		require.NoError(t, err)
 	}
 }
@@ -60,7 +48,7 @@ func ResumePipesErr(address, errContains string, pipes ...string) func(t *testin
 func PushToPipe(pipeline string, autoAck bool, address string) func(t *testing.T) {
 	return func(t *testing.T) {
 		client := NewJobsClient(t, address)
-		_, err := client.Push(t.Context(), connect.NewRequest(&jobsProto.PushRequest{Job: createDummyJob(pipeline, autoAck)}))
+		err := client.Call("jobs.Push", &jobsProto.PushRequest{Job: createDummyJob(pipeline, autoAck)}, &jobsProto.JobsHandlerResponse{})
 		require.NoError(t, err)
 	}
 }
@@ -79,7 +67,7 @@ func PushToPipeDelayed(address string, pipeline string, delay int64) func(t *tes
 				Delay:    delay,
 			},
 		}}
-		_, err := client.Push(t.Context(), connect.NewRequest(req))
+		err := client.Call("jobs.Push", req, &jobsProto.JobsHandlerResponse{})
 		assert.NoError(t, err)
 	}
 }
@@ -102,7 +90,7 @@ func createDummyJob(pipeline string, autoAck bool) *jobsProto.Job {
 func PausePipelines(address string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
 		client := NewJobsClient(t, address)
-		_, err := client.Pause(t.Context(), connect.NewRequest(&jobsProto.Pipelines{Pipelines: slices.Clone(pipes)}))
+		err := client.Call("jobs.Pause", &jobsProto.Pipelines{Pipelines: slices.Clone(pipes)}, &jobsProto.JobsHandlerResponse{})
 		assert.NoError(t, err)
 	}
 }
@@ -114,14 +102,14 @@ func PausePipelinesErr(address, errContains string, pipes ...string) func(t *tes
 func callPipelinesErr(address, method, errContains string, pipes ...string) func(t *testing.T) {
 	return func(t *testing.T) {
 		client := NewJobsClient(t, address)
-		req := connect.NewRequest(&jobsProto.Pipelines{Pipelines: slices.Clone(pipes)})
+		req := &jobsProto.Pipelines{Pipelines: slices.Clone(pipes)}
 
 		var err error
 		switch method {
 		case "Resume":
-			_, err = client.Resume(t.Context(), req)
+			err = client.Call("jobs.Resume", req, &jobsProto.JobsHandlerResponse{})
 		case "Pause":
-			_, err = client.Pause(t.Context(), req)
+			err = client.Call("jobs.Pause", req, &jobsProto.JobsHandlerResponse{})
 		default:
 			t.Fatalf("callPipelinesErr: unsupported method %q", method)
 		}
@@ -141,7 +129,7 @@ func DestroyPipelines(address string, pipes ...string) func(t *testing.T) {
 		// without asserting. Some negative tests intentionally destroy
 		// non-existent pipelines and rely on this silent-after-retry pattern.
 		for range 10 {
-			_, err := client.Destroy(t.Context(), connect.NewRequest(req))
+			err := client.Call("jobs.Destroy", req, &jobsProto.Pipelines{})
 			if err == nil {
 				return
 			}
@@ -172,7 +160,7 @@ func PushToPipeErr(pipeline string) func(t *testing.T) {
 		// Retry for a short period until push starts failing during redial.
 		require.Eventually(t, func() bool {
 			req.Job.Id = uuid.NewString()
-			_, err := client.Push(t.Context(), connect.NewRequest(req))
+			err := client.Call("jobs.Push", req, &jobsProto.JobsHandlerResponse{})
 			return err != nil
 		}, 5*time.Second, 100*time.Millisecond)
 	}
@@ -182,12 +170,12 @@ func Stats(address string, state *jobState.State) func(t *testing.T) {
 	return func(t *testing.T) {
 		client := NewJobsClient(t, address)
 
-		resp, err := client.GetStats(t.Context(), connect.NewRequest(&emptypb.Empty{}))
+		resp := &jobsProto.Stats{}
+		err := client.Call("jobs.GetStats", &emptypb.Empty{}, resp)
 		require.NoError(t, err)
-		require.NotNil(t, resp)
-		require.NotEmpty(t, resp.Msg.GetStats())
+		require.NotEmpty(t, resp.GetStats())
 
-		st := resp.Msg.GetStats()[0]
+		st := resp.GetStats()[0]
 		state.Queue = st.GetQueue()
 		state.Pipeline = st.GetPipeline()
 		state.Driver = st.GetDriver()
@@ -276,14 +264,15 @@ func DeclareAMQPPipeWithDeclare(queue, routingKey, name, headers, exclusive, dur
 			req.Pipeline["queue_declare"] = queueDeclare
 		}
 
-		_, err := client.Declare(t.Context(), connect.NewRequest(req))
+		err := client.Call("jobs.Declare", req, &jobsProto.JobsHandlerResponse{})
 		assert.NoError(t, err)
 	}
 }
 
 func Reset(t *testing.T) {
 	client := NewResetterClient(t, "127.0.0.1:6001")
-	resp, err := client.Reset(t.Context(), connect.NewRequest(&resetterProto.ResetRequest{Plugin: "jobs"}))
+	resp := &resetterProto.Response{}
+	err := client.Call("resetter.Reset", &resetterProto.ResetRequest{Plugin: "jobs"}, resp)
 	assert.NoError(t, err)
-	require.True(t, resp.Msg.GetOk())
+	require.True(t, resp.GetOk())
 }
