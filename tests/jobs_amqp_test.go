@@ -15,7 +15,6 @@ import (
 	"tests/helpers"
 	mocklogger "tests/mock"
 
-	"connectrpc.com/connect"
 	"github.com/google/uuid"
 	amqp "github.com/rabbitmq/amqp091-go"
 	amqpDriver "github.com/roadrunner-server/amqp/v6"
@@ -378,7 +377,7 @@ func TestAMQPHeadersXRoutingKey(t *testing.T) {
 	}
 
 	client := helpers.NewJobsClient(t, "127.0.0.1:6001")
-	_, err = client.Push(t.Context(), connect.NewRequest(&jobsProto.PushRequest{Job: jb}))
+	err = client.Call("jobs.Push", &jobsProto.PushRequest{Job: jb}, &jobsProto.JobsHandlerResponse{})
 	require.NoError(t, err)
 
 	time.Sleep(time.Second * 3)
