@@ -20,7 +20,7 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
         with:
           go-version: ${{ matrix.go }}
       - name: Set up PHP ${{ matrix.php }}
@@ -87,7 +87,7 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
         with:
           go-version: ${{ matrix.go }}
       - name: Set up PHP ${{ matrix.php }}
@@ -141,7 +141,7 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
         with:
           go-version: ${{ matrix.go }}
       - name: Set up PHP ${{ matrix.php }}
@@ -196,7 +196,7 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v6 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
         with:
           go-version: ${{ matrix.go }}
       - name: Check out code
