@@ -23,7 +23,7 @@ require (
 	github.com/roadrunner-server/server/v6 v6.0.0-beta.6
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/sdk v1.44.0
-	google.golang.org/genproto v0.0.0-20260723215102-3fe39f3c1018
+	google.golang.org/genproto v0.0.0-20260724162435-b2f20204f0df
 	google.golang.org/protobuf v1.36.11
 )
 
