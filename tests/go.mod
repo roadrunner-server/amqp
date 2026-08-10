@@ -24,7 +24,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	go.opentelemetry.io/otel/sdk v1.45.0
 	google.golang.org/genproto v0.0.0-20260807164820-c8921c73eeea
-	google.golang.org/protobuf v1.36.11
+	google.golang.org/protobuf v1.36.12
 )
 
 replace github.com/roadrunner-server/amqp/v6 => ../
