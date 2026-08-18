@@ -65,6 +65,8 @@ jobs:
           mkdir -p test-certs
           cp -r localhost+2-client-key.pem localhost+2-client.pem localhost+2-key.pem localhost+2.pem test-certs/
           cp -r $(mkcert -CAROOT)/rootCA.pem test-certs/
+          # the rabbitmq user inside the container has to be able to read the key
+          chmod 644 test-certs/*.pem
 
           docker compose -f env/docker-compose-amqp.yaml up -d --wait
 
