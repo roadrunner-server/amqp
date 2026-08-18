@@ -1,26 +1,49 @@
 services:
+  rabbitmq:
+    image: rabbitmq:3.13-management
+    ports:
+      - "127.0.0.1:5672:5672"
+      - "127.0.0.1:15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
   rabbitmq_tls:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13-management
     volumes:
       - ./rabbitmq-tls/:/etc/rabbitmq/
       - ../test-certs/:/var/rabbitmq/
     ports:
       - "127.0.0.1:5677:5671"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
 
-  rabbitmq:
-    image: rabbitmq:3-management
-    ports:
-      - "127.0.0.1:15672:15672"
-      - "127.0.0.1:5672:5672"
-
-  toxicproxy:
-    image: shopify/toxiproxy:latest
-    network_mode: "host"
-
+  # consumer_timeout is lowered so the slow worker tests can watch the broker
+  # cancel a delivery and the driver redial inside a reasonable runtime
   rabbitmq_slow:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.13-management
     volumes:
       - ./rabbitmq/rabbitmq.config:/etc/rabbitmq/rabbitmq.config
     ports:
-      - "127.0.0.1:15673:15672"
       - "127.0.0.1:5673:5672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 3s
+      timeout: 5s
+      retries: 40
+
+  # fronts rabbitmq for the durability (redial) tests; bridged rather than host
+  # networked so the api and the proxied port are reachable off Linux too
+  toxiproxy:
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8474:8474"
+      - "127.0.0.1:23679:23679"

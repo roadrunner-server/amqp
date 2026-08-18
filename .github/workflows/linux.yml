@@ -62,15 +62,16 @@ jobs:
           mkcert -install
           mkcert localhost 127.0.0.1 ::1
           mkcert -client localhost 127.0.0.1 ::1
+          mkdir -p test-certs
           cp -r localhost+2-client-key.pem localhost+2-client.pem localhost+2-key.pem localhost+2.pem test-certs/
           cp -r $(mkcert -CAROOT)/rootCA.pem test-certs/
+          # the rabbitmq user inside the container has to be able to read the key
+          chmod 644 test-certs/*.pem
 
-          docker compose -f env/docker-compose-amqp.yaml up -d
-          sleep 30
+          docker compose -f env/docker-compose-amqp.yaml up -d --wait
 
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=./... -coverprofile=./coverage-ci/summary.out -covermode=atomic jobs_amqp_test.go
-          docker compose -f env/docker-compose-amqp.yaml down
+          go test -timeout 25m -v -race -cover -tags=debug -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/summary.out -covermode=atomic -skip 'TestRedial|TestReadOnly' ./...
       - name: Archive code coverage results
         uses: actions/upload-artifact@v7
         with:
@@ -119,12 +120,12 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          docker compose -f env/docker-compose-amqp.yaml up -d
-          sleep 15
+          # only the plain broker and the proxy; the tls listener needs the
+          # generated certificates the durability job does not carry
+          docker compose -f env/docker-compose-amqp.yaml up -d --wait rabbitmq toxiproxy
 
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/durability.out -covermode=atomic jobs_amqp_durability_test.go
-          docker compose -f env/docker-compose-amqp.yaml down
+          go test -timeout 20m -v -race -cover -tags=debug -run TestRedial -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/durability.out -covermode=atomic ./...
       - name: Archive code coverage results
         uses: actions/upload-artifact@v7
         with:
@@ -173,12 +174,10 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          docker compose -f env/docker-compose-amqp-readonly.yaml up -d --build
-          sleep 30
+          docker compose -f env/docker-compose-amqp-readonly.yaml up -d --build --wait
 
           mkdir ./coverage-ci
-          go test -timeout 20m -v -race -cover -tags=debug -failfast -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/readonly.out -covermode=atomic jobs_amqp_readonly_test.go
-          docker compose -f env/docker-compose-amqp-readonly.yaml down
+          go test -timeout 20m -v -race -cover -tags=debug -run TestReadOnly -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/readonly.out -covermode=atomic ./...
       - name: Archive code coverage results
         uses: actions/upload-artifact@v7
         with:
@@ -251,6 +250,12 @@ jobs:
             }
           ' summary.txt > summary.filtered.txt
           mv summary.filtered.txt summary.txt
+          # a profile that maps to no plugin source uploads fine and reports 0%
+          blocks=$(($(wc -l < summary.txt) - 1))
+          if [ "$blocks" -lt 10 ]; then
+            echo "::error::coverage summary holds $blocks blocks, the profile does not map to plugin sources"
+            exit 1
+          fi
       - name: upload to codecov
         uses: codecov/codecov-action@v7
         with:

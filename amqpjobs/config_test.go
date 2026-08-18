@@ -2,6 +2,7 @@ package amqpjobs
 
 import (
 	"crypto/tls"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -79,10 +80,14 @@ func TestConfigInitDefaultErrors(t *testing.T) {
 }
 
 func TestConfigValidateTLS(t *testing.T) {
-	certDir := filepath.Join("..", "tests", "test-certs")
-	realKey := filepath.Join(certDir, "localhost+2-client-key.pem")
-	realCert := filepath.Join(certDir, "localhost+2-client.pem")
+	// validateTLS only checks the files exist; their content is never parsed
+	certDir := t.TempDir()
+	realKey := filepath.Join(certDir, "client-key.pem")
+	realCert := filepath.Join(certDir, "client.pem")
 	realCA := filepath.Join(certDir, "rootCA.pem")
+	for _, f := range []string{realKey, realCert, realCA} {
+		require.NoError(t, os.WriteFile(f, []byte("pem"), 0o600))
+	}
 	op := errors.Op("test_validate_tls")
 
 	t.Run("missing key file", func(t *testing.T) {
