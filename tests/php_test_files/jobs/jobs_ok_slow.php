@@ -1,15 +1,5 @@
 <?php
 
-/**
- * @var Goridge\RelayInterface $relay
- */
-
-use Spiral\Goridge;
-use Spiral\RoadRunner;
-use Spiral\Goridge\StreamRelay;
-use Spiral\RoadRunner\Jobs\Consumer;
-use Spiral\RoadRunner\Jobs\Serializer\JsonSerializer;
-
 ini_set("display_errors", "stderr");
 require dirname(__DIR__) . "/vendor/autoload.php";
 
@@ -17,9 +7,11 @@ $consumer = new Spiral\RoadRunner\Jobs\Consumer();
 
 while ($task = $consumer->waitTask()) {
     try {
-        sleep(60);
+        // outlives the broker consumer_timeout and rabbit's once a minute
+        // timeout sweep, so the delivery is canceled mid-processing
+        sleep(65);
         $task->ack();
     } catch (\Throwable $e) {
-        $rr->error((string) $e);
+        $task->fail($e);
     }
 }

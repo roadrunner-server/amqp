@@ -5,3 +5,10 @@ services:
     ports:
       - "127.0.0.1:5675:5672"
       - "127.0.0.1:15675:15672"
+    healthcheck:
+      # a plain ping answers before the definitions import has created the
+      # readonly user and its queue, so probe the queue itself
+      test: ["CMD-SHELL", "rabbitmqctl list_queues --no-table-headers | grep -q rr-readonly-queue"]
+      interval: 3s
+      timeout: 10s
+      retries: 40
