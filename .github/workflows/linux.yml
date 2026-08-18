@@ -62,6 +62,7 @@ jobs:
           mkcert -install
           mkcert localhost 127.0.0.1 ::1
           mkcert -client localhost 127.0.0.1 ::1
+          mkdir -p test-certs
           cp -r localhost+2-client-key.pem localhost+2-client.pem localhost+2-key.pem localhost+2.pem test-certs/
           cp -r $(mkcert -CAROOT)/rootCA.pem test-certs/
 
@@ -117,7 +118,9 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          docker compose -f env/docker-compose-amqp.yaml up -d --wait
+          # only the plain broker and the proxy; the tls listener needs the
+          # generated certificates the durability job does not carry
+          docker compose -f env/docker-compose-amqp.yaml up -d --wait rabbitmq toxiproxy
 
           mkdir ./coverage-ci
           go test -timeout 20m -v -race -cover -tags=debug -run TestRedial -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/durability.out -covermode=atomic ./...
