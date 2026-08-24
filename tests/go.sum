@@ -76,8 +76,8 @@ github.com/roadrunner-server/priority_queue v1.0.6 h1:x8bcMyjWs2Z4ySbO9BTP8Dzy2p
 github.com/roadrunner-server/priority_queue v1.0.6/go.mod h1:aJ2D9s18+OGpFfNgwoIduraaFYBGv4FKElnpzqO+TBI=
 github.com/roadrunner-server/resetter/v6 v6.0.0-beta.5 h1:ia8qeVmZ1GbxMwvpLDUeJaU0F657NeRn6T2ctCrOvfs=
 github.com/roadrunner-server/resetter/v6 v6.0.0-beta.5/go.mod h1:0RUrX6bTtX4GEXP4QIbzMsW+KieFOqjogPe9u9pz9AM=
-github.com/roadrunner-server/rpc/v6 v6.0.0-beta.5 h1:FjwXfznbmyCEKFUHkxnvK8yo1HQKAQk+7fiPhSYC27E=
-github.com/roadrunner-server/rpc/v6 v6.0.0-beta.5/go.mod h1:z387hZZOEJ3+bB8iW1PEAEXF3jUUb/dDLDnVSc1CNNQ=
+github.com/roadrunner-server/rpc/v6 v6.0.0-beta.6 h1:AMo1Xl2ihZnRwU0L6s/epcrc2ayuviaxD8toDa89Lr0=
+github.com/roadrunner-server/rpc/v6 v6.0.0-beta.6/go.mod h1:VhI4zwjYgSSJd2dKS7saM+LdRc9ycPv6NAmKHKSFySQ=
 github.com/roadrunner-server/server/v6 v6.0.0-beta.6 h1:CPtH4eIYkeRKi5cPXxb0+J+LI824cqhIGXAfcH+nkjA=
 github.com/roadrunner-server/server/v6 v6.0.0-beta.6/go.mod h1:SbODuCzC2gcbFhAmJDWvjf34pPrUWP5NxxVsTRQDuZ4=
 github.com/roadrunner-server/tcplisten v1.5.2 h1:nn8yXYrhRDkfQ9AAu4V075uT4fZRmOnpxkawgE+bWPA=
