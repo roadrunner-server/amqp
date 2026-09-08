@@ -17,7 +17,7 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 			ctx, span := d.tracer.Tracer(tracerName).Start(ctx, "amqp_listener")
 
 			if del.Options.AutoAck {
-				// we don't care about error here, since the job is not important
+				// AutoAck jobs enter the queue even if acknowledgment fails.
 				_ = msg.Ack(false)
 			}
 
@@ -26,13 +26,12 @@ func (d *Driver) listener(deliv <-chan amqp.Delivery) {
 			}
 
 			d.prop.Inject(ctx, propagation.HeaderCarrier(del.headers))
-			// insert job into the main priority queue
 			d.pq.Insert(del)
 			span.End()
 		}
 
 		d.log.Debug("delivery channel was closed, leaving the AMQP listener")
-		// atomically try to decrement the listener counter; if already 0 (e.g., Pause did it), skip
+		// Pause can clear the listener flag before this goroutine exits.
 		_ = d.listeners.CompareAndSwap(1, 0)
 		d.log.Debug("number of listeners", "listeners", d.listeners.Load())
 	}()

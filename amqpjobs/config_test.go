@@ -57,7 +57,7 @@ func TestConfigInitDefaultErrors(t *testing.T) {
 }
 
 func TestConfigValidateTLS(t *testing.T) {
-	// validateTLS only checks the files exist; their content is never parsed
+	// validateTLS checks file paths without parsing file contents.
 	certDir := t.TempDir()
 	realKey := filepath.Join(certDir, "client-key.pem")
 	realCert := filepath.Join(certDir, "client.pem")

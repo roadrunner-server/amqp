@@ -14,8 +14,7 @@ import (
 
 const (
 	durabilityAddr = "127.0.0.1:6001"
-	// proxyName fronts rabbitmq on 23679, which the durability configs dial.
-	// Both addresses are inside the compose network; 23679 is published.
+	// The proxy uses container-network addresses. Tests connect through host port 23679.
 	proxyName     = "redial"
 	proxyListen   = "0.0.0.0:23679"
 	proxyUpstream = "rabbitmq:5672"
@@ -66,8 +65,7 @@ func TestRedialAfterOutage(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 2)
 }
 
-// TestRedialWithoutQueue covers a push-only pipeline with no queue: it reports
-// empty state, rejects resume and pause, and survives an outage the same way.
+// TestRedialWithoutQueue checks broker recovery for a pipeline that only publishes messages.
 func TestRedialWithoutQueue(t *testing.T) {
 	helpers.CreateProxy(t, proxyName, proxyListen, proxyUpstream)
 
@@ -83,7 +81,7 @@ func TestRedialWithoutQueue(t *testing.T) {
 	helpers.PushToPipe("push_pipeline", false, durabilityAddr)(t)
 	rr.WaitLog(t, "job was pushed successfully", 1)
 
-	// a pipeline with no queue has nothing to consume or pause
+	// Resume and pause require a queue to consume from.
 	helpers.ResumePipesErr(durabilityAddr, "empty queue name", "push_pipeline")(t)
 	helpers.PausePipelinesErr(durabilityAddr, "empty queue name", "push_pipeline")(t)
 

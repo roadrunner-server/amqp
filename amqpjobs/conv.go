@@ -13,7 +13,6 @@ import (
 func convHeaders(h amqp.Table, log *slog.Logger) map[string][]string { //nolint:gocyclo
 	ret := make(map[string][]string, len(h))
 	for k := range h {
-		// mut ret
 		convHeadersAnyType(&ret, k, h[k], log)
 	}
 
@@ -56,12 +55,10 @@ func convHeadersAnyType(ret *map[string][]string, k string, header any, log *slo
 		(*ret)[k] = append((*ret)[k], string(t))
 	case []any:
 		for _, v := range t {
-			// we need to recursively call this function to handle nested slices of primitives
 			convHeadersAnyType(ret, k, v, log)
 		}
 	case amqp.Table:
 		for kk := range t {
-			// mut ret
 			convHeadersAnyType(ret, kk, t[kk], log)
 		}
 	case amqp.Decimal:
@@ -69,14 +66,11 @@ func convHeadersAnyType(ret *map[string][]string, k string, header any, log *slo
 	case time.Time:
 		(*ret)[k] = append((*ret)[k], t.Format(time.RFC3339))
 	default:
-		// we don't know what this is, so we'll just ignore it
 		log.Warn("unknown header type", "key", k, "value", t)
 	}
 }
 
 func formatDecimal(d amqp.Decimal) string {
-	// Calculate the divisor based on the scale.
 	divisor := math.Pow10(int(d.Scale))
-	// Divide the value by the divisor and format it as a string.
 	return fmt.Sprintf("%.*f", d.Scale, float64(d.Value)/divisor)
 }

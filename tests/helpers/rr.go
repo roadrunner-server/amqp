@@ -18,28 +18,19 @@ import (
 )
 
 const (
-	// defaultConfigVersion is the RoadRunner version passed to the config plugin.
 	defaultConfigVersion = "v2024.2.0"
-	// probeTimeout caps how long Start waits for the rpc listener to answer.
-	probeTimeout = time.Second * 30
-	probeTick    = time.Millisecond * 20
-	probeDial    = time.Second
-	// logTimeout bounds WaitLog. Jobs move through the pipeline asynchronously,
-	// so the record a test is after can lag the rpc call that caused it.
-	logTimeout = time.Second * 60
-	logTick    = time.Millisecond * 50
-	// statsTimeout bounds WaitStats; a delayed job only becomes ready when
-	// its delay lapses, so this has to outlast the longest delay a test uses.
-	statsTimeout = time.Second * 60
-	statsTick    = time.Millisecond * 100
-	// negativeWindow is how long NeverLog watches for a record that must not
-	// appear. Delivery from rabbit normally lands well inside a second.
-	negativeWindow = time.Second * 3
-	// shutdownTimeout is the endure graceful shutdown budget.
+	probeTimeout         = time.Second * 30
+	probeTick            = time.Millisecond * 20
+	probeDial            = time.Second
+	logTimeout           = time.Second * 60
+	logTick              = time.Millisecond * 50
+	// The timeout must exceed the longest job delay in these tests.
+	statsTimeout    = time.Second * 60
+	statsTick       = time.Millisecond * 100
+	negativeWindow  = time.Second * 3
 	shutdownTimeout = time.Second * 60
 )
 
-// bootCfg holds the options applied to a container before it is started.
 type bootCfg struct {
 	logLevel slog.Level
 	logger   loggerKind
@@ -47,7 +38,6 @@ type bootCfg struct {
 	extra    []any
 }
 
-// loggerKind selects which logger plugin Start registers.
 type loggerKind int
 
 const (
@@ -58,25 +48,22 @@ const (
 // Option customizes the container built by Start.
 type Option func(*bootCfg)
 
-// WithLogLevel sets the endure container log level (debug by default).
+// WithLogLevel sets the container log level. The default is slog.LevelDebug.
 func WithLogLevel(l slog.Level) Option {
 	return func(b *bootCfg) { b.logLevel = l }
 }
 
-// WithObservedLogger registers an in-memory logger instead of the real logger
-// plugin and exposes the captured records as RR.Logs.
+// WithObservedLogger captures log records in memory and exposes them through RR.Logs.
 func WithObservedLogger() Option {
 	return func(b *bootCfg) { b.logger = observedLogger }
 }
 
-// WithPlugin registers an extra plugin, used to swap in a test tracer.
+// WithPlugin registers an additional plugin.
 func WithPlugin(p any) Option {
 	return func(b *bootCfg) { b.extra = append(b.extra, p) }
 }
 
-// WithTCPProbe makes Start return only once addr accepts a connection. The rpc
-// listener binds after the driver has reached the broker, so dialing it proves the
-// pipeline is ready to take calls.
+// WithTCPProbe makes Start wait until addr accepts a TCP connection. The probe checks only the listener.
 func WithTCPProbe(addr string) Option {
 	return func(b *bootCfg) {
 		b.probe = func(ctx context.Context) bool {
@@ -94,26 +81,23 @@ func WithTCPProbe(addr string) Option {
 
 // RR is a running container.
 type RR struct {
-	// Logs holds the captured log records, non-nil only with WithObservedLogger.
+	// Logs is nil unless WithObservedLogger is set.
 	Logs *mocklogger.ObservedLogs
 }
 
-// CountLog returns how many captured records match snippet.
+// CountLog returns the number of captured records that contain snippet.
 func (rr *RR) CountLog(snippet string) int {
 	return rr.Logs.FilterMessageSnippet(snippet).Len()
 }
 
-// WaitLog blocks until the observed log holds at least want records matching
-// snippet. Polling replaces the fixed sleeps the suite used between an rpc call
-// and the assertion on its effect.
+// WaitLog waits for at least want records that contain snippet. Job processing can complete after the RPC call returns.
 func (rr *RR) WaitLog(t *testing.T, snippet string, want int) {
 	t.Helper()
 
 	rr.WaitLogWithin(t, snippet, want, logTimeout)
 }
 
-// WaitLogWithin is WaitLog with an explicit bound, for the one wait that has to
-// outlast a redial.
+// WaitLogWithin waits for at least want matching records within timeout.
 func (rr *RR) WaitLogWithin(t *testing.T, snippet string, want int, timeout time.Duration) {
 	t.Helper()
 
@@ -123,8 +107,7 @@ func (rr *RR) WaitLogWithin(t *testing.T, snippet string, want int, timeout time
 		want, snippet, rr.CountLog(snippet))
 }
 
-// RequireLogCount asserts the exact number of records matching snippet, after
-// waiting for them to arrive. An exact count catches a driver that redelivers.
+// RequireLogCount waits for want matching records, then checks the exact count.
 func (rr *RR) RequireLogCount(t *testing.T, snippet string, want int) {
 	t.Helper()
 
@@ -132,8 +115,7 @@ func (rr *RR) RequireLogCount(t *testing.T, snippet string, want int) {
 	require.Equal(t, want, rr.CountLog(snippet), "records matching %q", snippet)
 }
 
-// NeverLog asserts no record matching snippet shows up within the negative
-// window. Used where the point of the test is that nothing happens.
+// NeverLog checks that no record contains snippet during negativeWindow.
 func (rr *RR) NeverLog(t *testing.T, snippet string) {
 	t.Helper()
 
@@ -142,22 +124,17 @@ func (rr *RR) NeverLog(t *testing.T, snippet string) {
 	}, negativeWindow, logTick, "unexpected record matching %q", snippet)
 }
 
-// Start registers the plugins, boots the container and waits for the probe, if
-// any, to answer. Errors arriving on the container channel are reported through
-// t.Errorf and stop the container, but they do not abort the test.
+// Start initializes and starts the plugins, then waits for the optional probe. It reports asynchronous container errors with t.Errorf and stops the container. These errors mark the test as failed without aborting it.
 //
-// The returned stop is idempotent and also registered with t.Cleanup, so tests
-// asserting on records written during shutdown can stop the container mid-test.
+// The returned stop function runs at most once. Start also registers it for test cleanup. Tests can call it before checking shutdown logs.
 func Start(t *testing.T, cfgPath string, plugins []any, opts ...Option) (*RR, func()) {
 	t.Helper()
 
 	cont, rr, bc := newContainer(t, cfgPath, plugins, opts)
 	require.NoError(t, cont.Init())
 
-	// the rpc listener of the previous test can still be closing; booting into
-	// it would let the probe pass against the dying container. Containers that
-	// failed Serve leak their listener (roadrunner#2378), so their configs use
-	// ports of their own.
+	// A closing container can still accept connections. Wait for its listener to close before starting this container.
+	// Tests that expect Serve to fail use separate ports; see StartExpectServeError.
 	if bc.probe != nil {
 		require.Eventually(t, func() bool {
 			return !bc.probe(context.Background())
@@ -191,8 +168,7 @@ func Start(t *testing.T, cfgPath string, plugins []any, opts ...Option) (*RR, fu
 		}
 	})
 
-	// The drain goroutine calls t.Errorf, so it has to be joined while the test
-	// is still running.
+	// The error-reporting goroutine must finish before the test ends.
 	stop := sync.OnceFunc(func() {
 		close(done)
 		wg.Wait()
@@ -206,8 +182,9 @@ func Start(t *testing.T, cfgPath string, plugins []any, opts ...Option) (*RR, fu
 	return rr, stop
 }
 
-// StartExpectServeError registers the plugins, requires Init to pass and Serve
-// to fail, and returns the Serve error.
+// StartExpectServeError requires Init to succeed and Serve to fail. It returns the Serve error.
+//
+// The container remains running. Callers must use a separate listener port.
 func StartExpectServeError(t *testing.T, cfgPath string, plugins []any, opts ...Option) error {
 	t.Helper()
 
@@ -216,15 +193,11 @@ func StartExpectServeError(t *testing.T, cfgPath string, plugins []any, opts ...
 
 	_, err := cont.Serve()
 	require.Error(t, err)
-	// the container is deliberately not stopped: the jobs plugin's Stop panics
-	// on a double close when Serve failed before the processor came up, see
-	// roadrunner-server/roadrunner#2378
 
 	return err
 }
 
-// newContainer builds the container and registers the config, a logger and the
-// caller's plugins. The container is not initialized yet.
+// newContainer registers the configuration, logger, and caller's plugins. The caller must initialize the container.
 func newContainer(t *testing.T, cfgPath string, plugins []any, opts []Option) (*endure.Endure, *RR, *bootCfg) {
 	t.Helper()
 
@@ -254,9 +227,7 @@ func newContainer(t *testing.T, cfgPath string, plugins []any, opts []Option) (*
 	return cont, rr, bc
 }
 
-// WaitStats polls the pipeline state until want holds, then returns it. It
-// replaces the fixed sleeps the suite used to wait for a deferred publish to
-// become ready.
+// WaitStats waits until the pipeline state satisfies want, then returns that state.
 func WaitStats(t *testing.T, address string, pipeline string, want func(*jobState.State) bool) *jobState.State {
 	t.Helper()
 

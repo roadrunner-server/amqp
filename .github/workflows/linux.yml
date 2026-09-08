@@ -20,11 +20,11 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: sockets
@@ -35,7 +35,7 @@ jobs:
         run: |
           cd tests/php_test_files
           echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-      - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
+      - name: Init Composer Cache
         uses: actions/cache@v6
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
@@ -43,7 +43,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
       - name: Install Composer dependencies
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
-      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+      - name: Init Go modules Cache
         uses: actions/cache@v6
         with:
           path: ~/go/pkg/mod
@@ -65,7 +65,7 @@ jobs:
           mkdir -p test-certs
           cp -r localhost+2-client-key.pem localhost+2-client.pem localhost+2-key.pem localhost+2.pem test-certs/
           cp -r $(mkcert -CAROOT)/rootCA.pem test-certs/
-          # the rabbitmq user inside the container has to be able to read the key
+          # Let the container's rabbitmq user read the private keys.
           chmod 644 test-certs/*.pem
 
           docker compose -f env/docker-compose-amqp.yaml up -d --wait
@@ -88,11 +88,11 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: sockets
@@ -101,7 +101,7 @@ jobs:
       - name: Get Composer Cache Directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-      - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
+      - name: Init Composer Cache
         uses: actions/cache@v6
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
@@ -109,7 +109,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
       - name: Install Composer dependencies
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
-      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+      - name: Init Go modules Cache
         uses: actions/cache@v6
         with:
           path: ~/go/pkg/mod
@@ -120,7 +120,6 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          # TLS certificates are not needed for the two plain brokers.
           docker compose -f env/docker-compose-amqp.yaml up -d --wait rabbitmq rabbitmq_slow toxiproxy
 
           mkdir ./coverage-ci
@@ -141,11 +140,11 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
       - name: Set up PHP ${{ matrix.php }}
-        uses: shivammathur/setup-php@v2 # action page: <https://github.com/shivammathur/setup-php>
+        uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
           extensions: sockets
@@ -154,7 +153,7 @@ jobs:
       - name: Get Composer Cache Directory
         id: composer-cache
         run: echo "dir=$(composer config cache-files-dir)" >> $GITHUB_OUTPUT
-      - name: Init Composer Cache # Docs: <https://git.io/JfAKn#php---composer>
+      - name: Init Composer Cache
         uses: actions/cache@v6
         with:
           path: ${{ steps.composer-cache.outputs.dir }}
@@ -162,7 +161,7 @@ jobs:
           restore-keys: ${{ runner.os }}-composer-
       - name: Install Composer dependencies
         run: cd tests/php_test_files && composer update --prefer-dist --no-progress --ansi
-      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+      - name: Init Go modules Cache
         uses: actions/cache@v6
         with:
           path: ~/go/pkg/mod
@@ -194,14 +193,14 @@ jobs:
         os: ["ubuntu-latest"]
     steps:
       - name: Set up Go ${{ matrix.go }}
-        uses: actions/setup-go@v7 # action page: <https://github.com/actions/setup-go>
+        uses: actions/setup-go@v7
         with:
           go-version: ${{ matrix.go }}
       - name: Check out code
         uses: actions/checkout@v7
         with:
           persist-credentials: false
-      - name: Init Go modules Cache # Docs: <https://git.io/JfAKn#go---modules>
+      - name: Init Go modules Cache
         uses: actions/cache@v6
         with:
           path: ~/go/pkg/mod
@@ -211,7 +210,7 @@ jobs:
         run: go mod download
       - name: Run unit tests with coverage
         env:
-          GOWORK: off # scope ./... to the root module only (do not pull in the tests module)
+          GOWORK: off
         run: |
           mkdir ./coverage-ci
           go test -race -tags=debug -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/unit.out -covermode=atomic ./...
@@ -249,7 +248,7 @@ jobs:
             }
           ' summary.txt > summary.filtered.txt
           mv summary.filtered.txt summary.txt
-          # a profile that maps to no plugin source uploads fine and reports 0%
+          # A short profile can indicate incorrect source paths.
           blocks=$(($(wc -l < summary.txt) - 1))
           if [ "$blocks" -lt 10 ]; then
             echo "::error::coverage summary holds $blocks blocks, the profile does not map to plugin sources"

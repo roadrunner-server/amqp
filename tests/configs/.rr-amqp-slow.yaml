@@ -47,5 +47,4 @@ jobs:
           multiple_ack: false
           requeue_on_fail: false
 
-  # list of pipelines to be consumed by the server, keep empty if you want to start consuming manually
   consume: [ "test-1" ]

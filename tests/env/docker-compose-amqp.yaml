@@ -23,8 +23,8 @@ services:
       timeout: 5s
       retries: 40
 
-  # consumer_timeout is lowered so the slow worker tests can watch the broker
-  # cancel a delivery and the driver redial inside a reasonable runtime
+  # A short consumer_timeout lets slow-worker tests cause RabbitMQ to close the channel.
+  # https://www.rabbitmq.com/docs/3.13/consumers#acknowledgement-timeout
   rabbitmq_slow:
     image: rabbitmq:3.13-management
     volumes:
@@ -37,8 +37,8 @@ services:
       timeout: 5s
       retries: 40
 
-  # fronts rabbitmq for the durability (redial) tests; bridged rather than host
-  # networked so the api and the proxied port are reachable off Linux too
+  # Published ports let durability tests reach the proxy on Linux and macOS.
+  # https://docs.docker.com/desktop/features/networking/
   toxiproxy:
     image: ghcr.io/shopify/toxiproxy:2.12.0
     depends_on:

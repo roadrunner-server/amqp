@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-// LoggedEntry is a representation of a log record captured by the observer.
+// LoggedEntry stores a captured log record.
 type LoggedEntry struct {
 	Level   slog.Level
 	Message string
@@ -18,13 +18,12 @@ type LoggedEntry struct {
 	Attrs   map[string]any
 }
 
-// ObservedLogs is a concurrency-safe, ordered collection of observed logs.
+// ObservedLogs stores log entries in capture order and protects collection access with a mutex. Returned entries share the stored attribute maps.
 type ObservedLogs struct {
 	mu   sync.RWMutex
 	logs []LoggedEntry
 }
 
-// Len returns the number of items in the collection.
 func (o *ObservedLogs) Len() int {
 	o.mu.RLock()
 	n := len(o.logs)
@@ -32,7 +31,7 @@ func (o *ObservedLogs) Len() int {
 	return n
 }
 
-// All returns a copy of all the observed logs.
+// All returns a copy of the log entries.
 func (o *ObservedLogs) All() []LoggedEntry {
 	o.mu.RLock()
 	ret := make([]LoggedEntry, len(o.logs))
@@ -41,8 +40,7 @@ func (o *ObservedLogs) All() []LoggedEntry {
 	return ret
 }
 
-// TakeAll returns a copy of all the observed logs, and truncates the observed
-// slice.
+// TakeAll returns the stored log entries and clears the collection.
 func (o *ObservedLogs) TakeAll() []LoggedEntry {
 	o.mu.Lock()
 	ret := o.logs
@@ -51,9 +49,7 @@ func (o *ObservedLogs) TakeAll() []LoggedEntry {
 	return ret
 }
 
-// AllUntimed returns a copy of all the observed logs, but overwrites the
-// observed timestamps with time.Time's zero value. This is useful when making
-// assertions in tests.
+// AllUntimed copies the log entries and sets their timestamps to the zero time.
 func (o *ObservedLogs) AllUntimed() []LoggedEntry {
 	ret := o.All()
 	for i := range ret {
@@ -62,28 +58,28 @@ func (o *ObservedLogs) AllUntimed() []LoggedEntry {
 	return ret
 }
 
-// FilterLevelExact filters entries to those logged at exactly the given level.
+// FilterLevelExact selects records with the specified level.
 func (o *ObservedLogs) FilterLevelExact(level slog.Level) *ObservedLogs {
 	return o.Filter(func(e LoggedEntry) bool {
 		return e.Level == level
 	})
 }
 
-// FilterMessage filters entries to those that have the specified message.
+// FilterMessage selects records whose message equals msg.
 func (o *ObservedLogs) FilterMessage(msg string) *ObservedLogs {
 	return o.Filter(func(e LoggedEntry) bool {
 		return e.Message == msg
 	})
 }
 
-// FilterMessageSnippet filters entries to those that have a message containing the specified snippet.
+// FilterMessageSnippet selects records whose message contains snippet.
 func (o *ObservedLogs) FilterMessageSnippet(snippet string) *ObservedLogs {
 	return o.Filter(func(e LoggedEntry) bool {
 		return strings.Contains(e.Message, snippet)
 	})
 }
 
-// FilterAttrKey filters entries to those that have the specified attribute key.
+// FilterAttrKey selects records that contain the attribute key.
 func (o *ObservedLogs) FilterAttrKey(key string) *ObservedLogs {
 	return o.Filter(func(e LoggedEntry) bool {
 		_, ok := e.Attrs[key]
@@ -91,8 +87,7 @@ func (o *ObservedLogs) FilterAttrKey(key string) *ObservedLogs {
 	})
 }
 
-// FilterAttr filters entries to those that have the specified attribute key
-// AND value (compared with reflect.DeepEqual).
+// FilterAttr selects records with key and a value equal under reflect.DeepEqual. See https://pkg.go.dev/reflect#DeepEqual.
 func (o *ObservedLogs) FilterAttr(key string, value any) *ObservedLogs {
 	return o.Filter(func(e LoggedEntry) bool {
 		v, ok := e.Attrs[key]
@@ -100,8 +95,7 @@ func (o *ObservedLogs) FilterAttr(key string, value any) *ObservedLogs {
 	})
 }
 
-// Filter returns a copy of this ObservedLogs containing only those entries
-// for which the provided function returns true.
+// Filter returns the entries that satisfy keep in a new collection.
 func (o *ObservedLogs) Filter(keep func(LoggedEntry) bool) *ObservedLogs {
 	o.mu.RLock()
 	defer o.mu.RUnlock()
@@ -121,14 +115,13 @@ func (o *ObservedLogs) add(entry LoggedEntry) {
 	o.mu.Unlock()
 }
 
-// observerHandler is an slog.Handler that captures log records.
 type observerHandler struct {
 	level slog.Level
 	logs  *ObservedLogs
 	attrs map[string]any
 }
 
-// NewObserverHandler creates a new slog.Handler that buffers logs in memory.
+// NewObserverHandler returns a handler and its log collection. The handler accepts records at or above level.
 func NewObserverHandler(level slog.Level) (slog.Handler, *ObservedLogs) {
 	ol := &ObservedLogs{}
 	return &observerHandler{

@@ -11,7 +11,7 @@ import (
 	"github.com/roadrunner-server/errors"
 )
 
-// ClientAuthType TSL auth type
+// ClientAuthType names a tls.ClientAuthType value. See https://pkg.go.dev/crypto/tls#ClientAuthType.
 type ClientAuthType string
 
 const (
@@ -22,14 +22,13 @@ const (
 	RequireAndVerifyClientCert ClientAuthType = "require_and_verify_client_cert"
 )
 
-// pipeline amqp info
 const (
 	connectionKey string = "connection"
 	exchangeKey   string = "exchange"
 	exchangeType  string = "exchange_type"
 	queue         string = "queue"
 	routingKey    string = "routing_key"
-	// new options to control the declaration of exchange and queue, if not set - both will be declared by default
+	// Declaration options default to true.
 	exchangeDeclare string = "exchange_declare"
 	queueDeclare    string = "queue_declare"
 
@@ -41,7 +40,6 @@ const (
 	multipleAck   string = "multiple_ack"
 	requeueOnFail string = "requeue_on_fail"
 
-	// new in 2.12
 	redialTimeout      string = "redial_timeout"
 	exchangeDurable    string = "exchange_durable"
 	exchangeAutoDelete string = "exchange_auto_delete"
@@ -52,10 +50,8 @@ const (
 	dlxTTL        string = "x-message-ttl"
 	dlxExpires    string = "x-expires"
 
-	// new in 2.12.2
 	queueHeaders string = "queue_headers"
 
-	// new in 2023.1.0
 	consumerIDKey string = "consumer_id"
 	contentType   string = "application/octet-stream"
 )
@@ -87,13 +83,11 @@ type connectionConfig struct {
 	TLS  *TLS   `mapstructure:"tls"`
 }
 
-// config is the canonical static YAML model.
 type config struct {
-	// Resolved from the named connection.
+	// loadConnection sets these fields from the named connection.
 	Addr string `mapstructure:"-"`
 	TLS  *TLS   `mapstructure:"-"`
 
-	// local/common
 	Connection    string `mapstructure:"connection"`
 	Prefetch      int    `mapstructure:"prefetch"`
 	Priority      int64  `mapstructure:"priority"`
@@ -103,14 +97,13 @@ type config struct {
 	QueueConfig    *queueConfig    `mapstructure:"queue"`
 }
 
-// TLS configuration
+// TLS configures the certificate files used for broker connections.
 type TLS struct {
 	RootCA   string         `mapstructure:"root_ca"`
 	Key      string         `mapstructure:"key"`
 	Cert     string         `mapstructure:"cert"`
 	AuthType ClientAuthType `mapstructure:"client_auth_type"`
-	// auth type internal
-	auth tls.ClientAuthType
+	auth     tls.ClientAuthType
 }
 
 func (c *config) loadConnection(cfg Configurer) error {
@@ -227,7 +220,6 @@ func (c *config) validateTLS(op errors.Op) error {
 		return errors.E(op, err)
 	}
 
-	// RootCA is optional, but if provided - check it
 	if c.TLS.RootCA != "" {
 		if _, err := os.Stat(c.TLS.RootCA); err != nil {
 			if stderrors.Is(err, fs.ErrNotExist) {
@@ -236,7 +228,6 @@ func (c *config) validateTLS(op errors.Op) error {
 			return errors.E(op, err)
 		}
 
-		// auth type used only for the CA
 		switch c.TLS.AuthType {
 		case NoClientCert:
 			c.TLS.auth = tls.NoClientCert
@@ -256,7 +247,6 @@ func (c *config) validateTLS(op errors.Op) error {
 	return nil
 }
 
-// validateExchangeType checks that the exchange type is a valid AMQP exchange type.
 func validateExchangeType(t string) error {
 	switch t {
 	case "direct", "fanout", "topic", "headers":

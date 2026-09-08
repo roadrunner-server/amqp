@@ -19,9 +19,7 @@ import (
 )
 
 const (
-	// toxiproxyAddr is the toxiproxy api used by the durability tests.
 	toxiproxyAddr = "127.0.0.1:8474"
-	// redialTimeout bounds PushEventually, which retries across a broker outage.
 	redialTimeout = time.Second * 120
 	redialTick    = time.Second
 )
@@ -47,7 +45,7 @@ func ResumePipes(address string, pipes ...string) func(t *testing.T) {
 	}
 }
 
-// ResumePipesErr requires the resume call to fail with the given message.
+// ResumePipesErr requires the resume error to contain errContains.
 func ResumePipesErr(address, errContains string, pipes ...string) func(t *testing.T) {
 	return callPipelinesErr(address, "jobs.Resume", errContains, pipes...)
 }
@@ -61,7 +59,7 @@ func PausePipelines(address string, pipes ...string) func(t *testing.T) {
 	}
 }
 
-// PausePipelinesErr requires the pause call to fail with the given message.
+// PausePipelinesErr requires the pause error to contain errContains.
 func PausePipelinesErr(address, errContains string, pipes ...string) func(t *testing.T) {
 	return callPipelinesErr(address, "jobs.Pause", errContains, pipes...)
 }
@@ -104,8 +102,7 @@ func PushToPipeDelayed(address string, pipeline string, delay int64) func(t *tes
 	}
 }
 
-// PushExpectError pushes to a pipeline whose broker is down and requires the
-// call to fail, so an outage is not silently swallowed.
+// PushExpectError requires a push to fail during a broker outage.
 func PushExpectError(address string, pipeline string) func(t *testing.T) {
 	return func(t *testing.T) {
 		client := NewJobsClient(t, address)
@@ -115,8 +112,7 @@ func PushExpectError(address string, pipeline string) func(t *testing.T) {
 	}
 }
 
-// PushEventually keeps retrying a push until it lands. Used after a broker
-// outage, where the redialer needs a while to get through again.
+// PushEventually retries failed pushes after a broker outage until one succeeds or redialTimeout expires.
 func PushEventually(t *testing.T, address string, pipeline string) {
 	t.Helper()
 
@@ -144,8 +140,7 @@ func dummyJob(pipeline string, autoAck bool, delay int64) *jobsProto.Job {
 	}
 }
 
-// DeclarePipe declares a pipeline over rpc bound to its own queue and routing
-// key, so a test never inherits messages from another.
+// DeclarePipe uses the pipeline name as the default queue and routing key to isolate test messages. opts overrides the defaults.
 func DeclarePipe(address string, name string, opts map[string]string) func(t *testing.T) {
 	return func(t *testing.T) {
 		pipeline := map[string]string{
@@ -174,8 +169,7 @@ func DeclarePipe(address string, name string, opts map[string]string) func(t *te
 	}
 }
 
-// StatsFor returns the state the jobs plugin reports for one pipeline. Picking
-// it by name keeps the assertion stable when several are registered.
+// StatsFor returns the state of the named pipeline. It fails the test if the pipeline is missing.
 func StatsFor(t *testing.T, address string, pipeline string) *jobState.State {
 	t.Helper()
 
@@ -219,12 +213,11 @@ func Reset(t *testing.T, address string) {
 	require.True(t, done)
 }
 
-// CreateProxy fronts rabbitmq with a toxiproxy the durability tests can cut.
-// Both addresses are resolved inside the compose network, not on the host.
+// CreateProxy creates a Toxiproxy TCP proxy for broker outage tests. The addresses use the proxy container's network. See https://github.com/Shopify/toxiproxy#http-api.
 func CreateProxy(t *testing.T, name string, listen string, upstream string) {
 	t.Helper()
 
-	// a proxy left behind by an interrupted run would make the create conflict
+	// Remove any proxy from an interrupted test run to prevent a name conflict.
 	deleteProxy(t, name)
 
 	body := fmt.Sprintf(`{"name":%q,"listen":%q,"upstream":%q,"enabled":true}`, name, listen, upstream)
@@ -232,7 +225,7 @@ func CreateProxy(t *testing.T, name string, listen string, upstream string) {
 	t.Cleanup(func() { deleteProxy(t, name) })
 }
 
-// SetProxyEnabled cuts or restores the connection to rabbitmq.
+// SetProxyEnabled enables or disables the named proxy.
 func SetProxyEnabled(t *testing.T, name string, enabled bool) {
 	t.Helper()
 
@@ -242,7 +235,7 @@ func SetProxyEnabled(t *testing.T, name string, enabled bool) {
 func deleteProxy(t *testing.T, name string) {
 	t.Helper()
 
-	// runs from t.Cleanup, where the test context is already canceled
+	// Cleanup needs an active context after the test context is canceled. See https://pkg.go.dev/testing#T.Context.
 	req, err := http.NewRequestWithContext(context.Background(), http.MethodDelete, "http://"+toxiproxyAddr+"/proxies/"+name, nil)
 	require.NoError(t, err)
 

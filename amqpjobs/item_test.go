@@ -12,8 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// testPipeline is a minimal jobs.Pipeline implementation for unit tests.
-// Only Name() is exercised by unpack/fromDelivery; the rest return zero values.
+// testPipeline supplies the pipeline name for delivery conversion tests.
 type testPipeline struct{ name string }
 
 func (p *testPipeline) With(string, any)                    {}
@@ -27,7 +26,7 @@ func (p *testPipeline) Map(string, map[string]string) error { return nil }
 func (p *testPipeline) Priority() int64                     { return 0 }
 func (p *testPipeline) Get(string) any                      { return nil }
 
-// fakeAcker records ack/nack calls without a live AMQP channel.
+// fakeAcker records Ack and Nack calls without a broker connection.
 type fakeAcker struct {
 	acked, nacked bool
 }
@@ -36,8 +35,7 @@ func (f *fakeAcker) Ack(_ uint64, _ bool) error     { f.acked = true; return nil
 func (f *fakeAcker) Nack(_ uint64, _, _ bool) error { f.nacked = true; return nil }
 func (f *fakeAcker) Reject(_ uint64, _ bool) error  { return nil }
 
-// testDriver builds a Driver with only the fields fromDelivery/unpack read:
-// a logger, a config and a pipeline. No AMQP connection is required.
+// testDriver configures delivery conversion without a broker connection.
 func testDriver(t *testing.T) *Driver {
 	t.Helper()
 	d := &Driver{log: slog.New(slog.NewTextHandler(io.Discard, nil))}
@@ -87,10 +85,10 @@ func TestUnpackMissingHeaders(t *testing.T) {
 
 	item := d.unpack(amqp.Delivery{Headers: amqp.Table{}})
 
-	require.NotEmpty(t, item.Ident)                      // generated UUID
-	require.Equal(t, auto, item.Job)                     // "deduced_by_rr"
-	require.Equal(t, "test-pipe", item.Options.Pipeline) // pipeline.Name()
-	require.Equal(t, int64(10), item.Options.Priority)   // falls back to the pipeline default
+	require.NotEmpty(t, item.Ident)
+	require.Equal(t, auto, item.Job)
+	require.Equal(t, "test-pipe", item.Options.Pipeline)
+	require.Equal(t, int64(10), item.Options.Priority) // The priority comes from the driver configuration.
 }
 
 func TestUnpackDelayTypeVariants(t *testing.T) {
@@ -146,7 +144,7 @@ func TestFromDeliveryAutoAck(t *testing.T) {
 	item := d.fromDelivery(amqp.Delivery{Headers: tbl})
 
 	require.True(t, item.Options.AutoAck)
-	// AutoAck wires no-op stubs, so neither needs a live Acknowledger.
+	// AutoAck callbacks must succeed without a broker connection.
 	require.NoError(t, item.Options.ack(false))
 	require.NoError(t, item.Options.nack(false, false))
 }

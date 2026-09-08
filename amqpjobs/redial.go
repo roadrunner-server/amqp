@@ -11,7 +11,6 @@ import (
 )
 
 const (
-	// pipeline operation
 	restartStr       string = "restart"
 	ConnCloseType    string = "connection"
 	ConsumeCloseType string = "consume"
@@ -24,19 +23,17 @@ type redialMsg struct {
 	err *amqp.Error
 }
 
-// redialer used to redial to the server in case of the connection interrupts
+// redialer forwards close notifications and handles shutdown in a goroutine.
 func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 	go func() {
 		for {
 			select {
 			case err, closed := <-d.notifyCloseConnCh:
-				// exit on a graceful close
 				if closed && err == nil {
 					d.log.Debug("[notify close connection channel]: channel is closed")
 					return
 				}
 
-				// stopped
 				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close connection channel]: channel is not closed, but driver is stopped")
 					return
@@ -55,13 +52,11 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 			case err, closed := <-d.notifyCloseConsumeCh:
-				// exit on a graceful close
 				if closed && err == nil {
 					d.log.Debug("[notify close consume channel]: channel is closed")
 					return
 				}
 
-				// stopped
 				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close consume channel]: channel is not closed, but driver is stopped")
 					return
@@ -80,13 +75,11 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 			case err, closed := <-d.notifyClosePubCh:
-				// exit on a graceful close
 				if closed && err == nil {
 					d.log.Debug("[notify close publish channel]: channel is closed")
 					return
 				}
 
-				// stopped
 				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close publish channel]: channel is not closed, but driver is stopped")
 					return
@@ -105,13 +98,11 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				}
 
 			case err, closed := <-d.notifyCloseStatCh:
-				// exit on a graceful close
 				if closed && err == nil {
 					d.log.Debug("[notify close statistic channel]: channel is closed")
 					return
 				}
 
-				// stopped
 				if d.stopped.Load() == 1 {
 					d.log.Debug("[notify close statistic channel]: channel is not closed, but driver is stopped")
 					return
@@ -135,19 +126,17 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				pch := <-d.publishChan
 				stCh := <-d.stateChan
 
-				// cancel new deliveries on the consume channel (not the publish channel)
+				// Cancel the consumer to stop new deliveries.
 				if d.consumeChan != nil {
 					if cancelErr := d.consumeChan.Cancel(d.config.Load().QueueConfig.ConsumerID, false); cancelErr != nil {
 						d.log.Error("consumer cancel", "error", cancelErr, "consumerID", d.config.Load().QueueConfig.ConsumerID)
 					}
 				}
 
-				// wait for the listener to stop
 				for d.listeners.Load() != 0 {
 					time.Sleep(time.Millisecond)
 				}
 
-				// remove the items associated with that pipeline from the priority_queue
 				_ = d.pq.Remove((*d.pipeline.Load()).Name())
 
 				if d.config.Load().QueueConfig.DeleteOnStop {
@@ -228,7 +217,7 @@ func (d *Driver) redialMergeCh() {
 
 func (d *Driver) redial(rm *redialMsg) {
 	const op = errors.Op("amqp_driver_redial")
-	// trash the broken publishing channels, close the connection
+	// Close the connection and its channels before reconnecting.
 	d.reset()
 
 	t := time.Now().UTC()
@@ -237,7 +226,7 @@ func (d *Driver) redial(rm *redialMsg) {
 	d.log.Error("pipeline connection was closed, redialing", "error", rm.err, "pipeline", pipe.Name(), "driver", pipe.Driver(), "start", t)
 
 	expb := backoff.NewExponentialBackOff()
-	// set the retry timeout (minutes)
+	// RedialTimeout sets the retry limit in seconds. An active attempt can exceed this limit.
 	expb.MaxElapsedTime = time.Duration(d.config.Load().RedialTimeout) * time.Second
 	operation := func() error {
 		var err error
@@ -248,14 +237,12 @@ func (d *Driver) redial(rm *redialMsg) {
 
 		d.log.Info("amqp dial was succeed. trying to redeclare queues and subscribers")
 
-		// re-init connection
 		err = d.init()
 		if err != nil {
 			d.log.Error("amqp dial", "error", err)
 			return errors.E(op, err)
 		}
 
-		// redeclare publish channel
 		pch, err := d.conn.Channel()
 		if err != nil {
 			return errors.E(op, err)
@@ -279,14 +266,10 @@ func (d *Driver) redial(rm *redialMsg) {
 		pch.NotifyClose(d.notifyClosePubCh)
 		sch.NotifyClose(d.notifyCloseStatCh)
 
-		// put the fresh channels
 		d.stateChan <- sch
 		d.publishChan <- pch
 
-		// we should restore the listener only when we previously had an active listener
-		// OR if we get a Consume Closed type of the error
 		if d.listeners.Load() == 1 || rm.t == ConsumeCloseType {
-			// redeclare consume channel
 			d.consumeChan, err = d.conn.Channel()
 			if err != nil {
 				return errors.E(op, err)
@@ -298,7 +281,6 @@ func (d *Driver) redial(rm *redialMsg) {
 				return errors.E(op, err)
 			}
 
-			// start reading messages from the channel
 			deliv, err := d.consumeChan.Consume(
 				d.config.Load().QueueConfig.Name,
 				d.config.Load().QueueConfig.ConsumerID,
@@ -313,7 +295,6 @@ func (d *Driver) redial(rm *redialMsg) {
 			}
 			d.notifyCloseConsumeCh = make(chan *amqp.Error, 1)
 			d.consumeChan.NotifyClose(d.notifyCloseConsumeCh)
-			// restart listener
 			err = d.declareQueue()
 			if err != nil {
 				return err
@@ -332,14 +313,13 @@ func (d *Driver) redial(rm *redialMsg) {
 	retryErr := backoff.Retry(operation, expb)
 	if retryErr != nil {
 		d.log.Error("backoff operation failed, pipeline will be recreated", "error", retryErr)
-		// recreate pipeline on fail
+		// Request a pipeline restart after retries fail.
 		d.eventBus.Send(events.NewEvent(events.EventJOBSDriverCommand, pipe.Name(), restartStr))
 		return
 	}
 
 	d.log.Info("connection was successfully restored", "pipeline", pipe.Name(), "driver", pipe.Driver(), "start", t, "elapsed", time.Since(t).Milliseconds())
 
-	// restart redialer
 	d.redialer()
 	d.log.Info("redialer restarted")
 }

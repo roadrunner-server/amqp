@@ -71,9 +71,9 @@ func TestConvHeadersExtraTypes(t *testing.T) {
 
 	table := amqp.Table{
 		"time":    ts,
-		"nested":  amqp.Table{"inner": "v"}, // recursion keys by the inner name
-		"slice":   []any{1, "two"},          // recursion keeps the outer key
-		"unknown": struct{ A int }{A: 1},    // hits the default (ignored) arm
+		"nested":  amqp.Table{"inner": "v"}, // Nested tables use their own keys.
+		"slice":   []any{1, "two"},          // Slice elements share the outer key.
+		"unknown": struct{ A int }{A: 1},
 	}
 
 	ret := convHeaders(table, log)

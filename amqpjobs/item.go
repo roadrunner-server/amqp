@@ -21,53 +21,43 @@ const (
 )
 
 type Item struct {
-	// Job contains the pluginName of job broker (usually PHP class).
-	Job string `json:"job"`
-	// Ident is a unique identifier of the job, should be provided from outside
+	// Job identifies the job handler.
+	Job   string `json:"job"`
 	Ident string `json:"id"`
-	// Payload is string data (usually JSON) passed to Job broker.
+	// Payload contains application-defined job data.
 	Payload []byte `json:"payload"`
-	// Headers with key-values pairs
 	headers map[string][]string
-	// Options contain a set of PipelineOptions specific to job execution. Can be empty.
+	// Options supplies job execution settings and must be non-nil.
 	Options *Options `json:"options,omitzero"`
 }
 
-// Options carry information about how to handle a given job.
+// Options defines job execution settings.
 type Options struct {
-	// Priority is job priority, default - 10
-	// pointer to distinguish 0 as a priority and nil as a priority not set
+	// Priority controls scheduling in the RoadRunner queue.
 	Priority int64 `json:"priority"`
-	// Pipeline manually specified pipeline.
+	// Pipeline names the RoadRunner pipeline.
 	Pipeline string `json:"pipeline,omitzero"`
-	// Delay defines time duration to delay execution for. Defaults to none.
+	// Delay specifies the job delay in seconds.
 	Delay int `json:"delay,omitzero"`
-	// AutoAck option
+	// AutoAck enables acknowledgment before queue insertion. See https://pkg.go.dev/github.com/rabbitmq/amqp091-go#Delivery.Ack.
 	AutoAck bool `json:"auto_ack"`
-	// AMQP Queue
+	// Queue names the source queue.
 	Queue string `json:"queue,omitzero"`
 
-	// private
 	stopped *atomic.Uint64
-	// ack delegates an acknowledgement through the Acknowledger interface that the client or server has finished work on a delivery
-	ack func(multiply bool) error
+	ack     func(multiply bool) error
 
-	// nack negatively acknowledge the delivery of message(s) identified by the delivery tag from either the client or server.
-	// When multiple is true, nack messages up to and including delivered messages up until the delivery tag is delivered on the same channel.
-	// When requeue is true, request the server to deliver this message to a different Driver. If it is not possible or requeue is false, the message will be dropped or delivered to a server-configured dead-letter queue.
-	// This method must not be used to select or requeue messages the client wishes not to handle, rather it is to inform the server that the client is incapable of handling this message at this time
 	nack func(multiply bool, requeue bool) error
 
-	// requeueFn used as a pointer to the push function
+	// requeueFn republishes the job.
 	requeueFn func(context.Context, *Item) error
 
-	// delayed jobs TODO(rustatian): figure out how to get stats from the DLX
+	// delayed points to the driver's local delayed-job counter.
 	delayed     *atomic.Int64
 	multipleAck bool
 	requeue     bool
 }
 
-// DelayDuration returns delay duration in the form of time.Duration.
 func (o *Options) DelayDuration() time.Duration {
 	return time.Second * time.Duration(o.Delay)
 }
@@ -84,7 +74,6 @@ func (i *Item) Priority() int64 {
 	return i.Options.Priority
 }
 
-// Body packs job payload into binary payload.
 func (i *Item) Body() []byte {
 	return i.Payload
 }
@@ -93,8 +82,7 @@ func (i *Item) Headers() map[string][]string {
 	return i.headers
 }
 
-// Context packs job context (job, id) into binary payload.
-// Not used in the amqp, amqp.Table used instead
+// Context encodes job metadata as JSON.
 func (i *Item) Context() ([]byte, error) {
 	ctx, err := json.Marshal(
 		struct {
@@ -137,16 +125,14 @@ func (i *Item) NackWithOptions(requeue bool, delay int) error {
 	}
 
 	if requeue {
-		// if delay is set, requeue with delay via non-native requeue
+		// Republish the job to apply the delay.
 		if delay > 0 {
 			return i.Requeue(nil, delay)
-			// if delay is not set, requeue via native requeue
 		}
 
 		return i.Options.nack(false, true)
 	}
 
-	// otherwise, nack without requeue
 	return i.Options.nack(false, false)
 }
 
@@ -160,7 +146,7 @@ func (i *Item) Nack() error {
 	return i.Options.nack(false, i.Options.requeue)
 }
 
-// Requeue with the provided delay, handled by the Nack
+// Requeue republishes the job with the specified delay in seconds.
 func (i *Item) Requeue(headers map[string][]string, delay int) error {
 	if i.Options.stopped.Load() == 1 {
 		return errors.Str("failed to acknowledge the JOB, the pipeline is probably stopped")
@@ -169,7 +155,6 @@ func (i *Item) Requeue(headers map[string][]string, delay int) error {
 		i.Options.delayed.Add(-1)
 	}
 
-	// overwrite the delay
 	i.Options.Delay = delay
 	if i.headers == nil {
 		i.headers = make(map[string][]string)
@@ -189,7 +174,7 @@ func (i *Item) Requeue(headers map[string][]string, delay int) error {
 		return err
 	}
 
-	// ack the previous message to avoid duplicates
+	// Acknowledge the original delivery to prevent its redelivery. See https://pkg.go.dev/github.com/rabbitmq/amqp091-go#Delivery.Ack.
 	err = i.Options.ack(false)
 	if err != nil {
 		return err
@@ -202,13 +187,13 @@ func (i *Item) Respond(_ []byte, _ string) error {
 	return nil
 }
 
-// fromDelivery converts amqp.Delivery into an Item which will be pushed to the PQ
+// fromDelivery creates an Item with delivery callbacks and shared driver state.
 func (d *Driver) fromDelivery(deliv amqp.Delivery) *Item {
 	item := d.unpack(deliv)
 
 	if item.Options.AutoAck {
 		d.log.Debug("using auto acknowledge for the job")
-		// stubs for ack/nack
+		// The listener acknowledges AutoAck deliveries before queue insertion.
 		item.Options.ack = func(bool) error {
 			return nil
 		}
@@ -224,7 +209,6 @@ func (d *Driver) fromDelivery(deliv amqp.Delivery) *Item {
 
 	item.Options.stopped = &d.stopped
 	item.Options.delayed = &d.delayed
-	// requeue func
 	item.Options.requeueFn = d.handleItem
 
 	return item
@@ -245,7 +229,7 @@ func fromJob(job jobs.Message) *Item {
 	}
 }
 
-// pack job metadata into headers
+// pack encodes job metadata in AMQP headers.
 func pack(id string, j *Item) (amqp.Table, error) {
 	h, err := json.Marshal(j.headers)
 	if err != nil {
@@ -262,7 +246,7 @@ func pack(id string, j *Item) (amqp.Table, error) {
 	}, nil
 }
 
-// unpack restores jobs.Options
+// unpack decodes a delivery and applies pipeline defaults.
 func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	conf := d.config.Load()
 	item := &Item{
@@ -318,7 +302,6 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 	}
 
 	if t, ok := deliv.Headers[jobs.RRPriority]; !ok {
-		// set pipe's priority
 		item.Options.Priority = d.config.Load().Priority
 	} else {
 		switch tt := t.(type) {

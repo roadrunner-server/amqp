@@ -7,8 +7,8 @@ $consumer = new Spiral\RoadRunner\Jobs\Consumer();
 
 while ($task = $consumer->waitTask()) {
     try {
-        // outlives the broker consumer_timeout and rabbit's once a minute
-        // timeout sweep, so the delivery is canceled mid-processing
+        // RabbitMQ checks delivery acknowledgement timeouts once per minute.
+        // https://www.rabbitmq.com/docs/3.13/consumers#acknowledgement-timeout
         sleep(65);
         $task->ack();
     } catch (\Throwable $e) {
