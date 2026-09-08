@@ -1,0 +1,51 @@
+version: '3'
+
+rpc:
+  listen: tcp://127.0.0.1:6002
+
+server:
+  command: "php php_test_files/jobs/jobs_connections.php"
+  relay: "pipes"
+  relay_timeout: "20s"
+
+amqp:
+  brokerA:
+    addr: amqp://guest:guest@127.0.0.1:5673/
+  brokerB:
+    addr: amqp://guest:guest@127.0.0.1:5672/
+
+logs:
+  level: debug
+  encoding: console
+  mode: development
+
+jobs:
+  pipeline_size: 10
+  pool:
+    num_workers: 1
+    allocate_timeout: 60s
+    destroy_timeout: 1s
+
+  pipelines:
+    connections-source:
+      driver: amqp
+      config:
+        connection: brokerA
+        prefetch: 1
+        priority: 1
+        exchange:
+          name: amqp-connections-exchange
+          type: direct
+          durable: false
+          auto_delete: false
+        queue:
+          name: amqp-connections-queue
+          routing_key: amqp-connections-route
+          exclusive: false
+          delete_on_stop: true
+          multiple_ack: false
+          requeue_on_fail: false
+          headers:
+            x-queue-mode: lazy
+
+  consume: [ "connections-source" ]

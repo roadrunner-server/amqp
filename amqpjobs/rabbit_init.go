@@ -7,9 +7,6 @@ import (
 func (d *Driver) init() error {
 	const op = errors.Op("jobs_plugin_amqp_init")
 	conf := d.config.Load()
-	// Channel opens a unique, concurrent server channel to process the bulk of AMQP
-	// messages.  Any error from methods on this receiver will render the receiver
-	// invalid and a new Channel should be opened.
 	channel, err := d.conn.Channel()
 	if err != nil {
 		return errors.E(op, err)
@@ -22,12 +19,11 @@ func (d *Driver) init() error {
 		return nil
 	}
 
-	// declare an exchange (idempotent operation)
 	err = channel.ExchangeDeclare(
-		conf.exchangeName(),
-		conf.exchangeTypeName(),
-		conf.exchangeDurable(),
-		conf.exchangeAutoDelete(),
+		conf.ExchangeConfig.Name,
+		conf.ExchangeConfig.Type,
+		conf.ExchangeConfig.Durable,
+		conf.ExchangeConfig.AutoDelete,
 		false,
 		false,
 		nil,
@@ -54,24 +50,22 @@ func (d *Driver) declareQueue() error {
 		return nil
 	}
 
-	// verify or declare a queue
 	q, err := channel.QueueDeclare(
-		conf.queueName(),
-		conf.queueDurable(),
-		conf.queueAutoDelete(),
-		conf.queueExclusive(),
+		conf.QueueConfig.Name,
+		conf.QueueConfig.Durable,
+		conf.QueueConfig.AutoDelete,
+		conf.QueueConfig.Exclusive,
 		false,
-		conf.queueHeadersArgs(),
+		conf.QueueConfig.Headers,
 	)
 	if err != nil {
 		return errors.E(op, err)
 	}
 
-	// bind queue to the exchange
 	err = channel.QueueBind(
 		q.Name,
-		conf.routingKeyName(),
-		conf.exchangeName(),
+		conf.QueueConfig.RoutingKey,
+		conf.ExchangeConfig.Name,
 		false,
 		nil,
 	)

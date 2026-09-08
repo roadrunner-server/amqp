@@ -9,7 +9,8 @@ server:
   relay_timeout: "20s"
 
 amqp:
-  addr: amqp://readonly:readonly@127.0.0.1:5675/
+  rabbitmq:
+    addr: amqp://readonly:readonly@127.0.0.1:5675/
 
 logs:
   level: debug
@@ -29,7 +30,7 @@ jobs:
     readonly-ok:
       driver: amqp
       config:
-        version: 2
+        connection: rabbitmq
         prefetch: 100
         priority: 1
         exchange:

@@ -5,7 +5,8 @@ server:
   command: "php php_test_files/jobs/jobs_ok.php"
   relay: "pipes"
 amqp:
-  addr: amqp://guest:guest@127.0.0.1:23679/
+  rabbitmq:
+    addr: amqp://guest:guest@127.0.0.1:23679/
 logs:
   level: debug
   mode: development
@@ -14,6 +15,9 @@ jobs:
     push_pipeline:
       driver: amqp
       config:
-        exchange: default
-        routing_key: product.created
-        exchange_type: direct
+        connection: rabbitmq
+        exchange:
+          name: default
+          type: direct
+        queue:
+          routing_key: product.created

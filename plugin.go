@@ -1,7 +1,4 @@
-// Package amqp provides a RoadRunner plugin for AMQP (Advanced Message Queuing Protocol) integration.
-// It enables RoadRunner's jobs system to use RabbitMQ or other AMQP-compatible message brokers
-// as a backend for asynchronous job processing, supporting features like message persistence,
-// routing, and reliable delivery.
+// Package amqp provides an AMQP 0-9-1 plugin for RoadRunner jobs. See https://www.rabbitmq.com/tutorials/amqp-concepts#overview.
 package amqp
 
 import (
@@ -23,7 +20,7 @@ var _ jobs.Constructor = (*Plugin)(nil)
 const pluginName string = "amqp"
 
 type Configurer interface {
-	// UnmarshalKey takes a single key and unmarshal it into a Struct.
+	// UnmarshalKey decodes the named configuration section into out.
 	UnmarshalKey(name string, out any) error
 	// Has checks if a config section exists.
 	Has(name string) bool
@@ -65,12 +62,12 @@ func (p *Plugin) Collects() []*dep.In {
 	}
 }
 
-// DriverFromConfig constructs amqp driver from the .rr.yaml configuration
+// DriverFromConfig creates a driver from the named configuration section.
 func (p *Plugin) DriverFromConfig(ctx context.Context, configKey string, pq jobs.Queue, pipeline jobs.Pipeline) (jobs.Driver, error) {
 	return amqpjobs.FromConfig(ctx, p.tracer, configKey, p.log, p.cfg, pipeline, pq)
 }
 
-// DriverFromPipeline constructs amqp driver from pipeline
+// DriverFromPipeline creates a driver from pipeline options.
 func (p *Plugin) DriverFromPipeline(ctx context.Context, pipe jobs.Pipeline, pq jobs.Queue) (jobs.Driver, error) {
 	return amqpjobs.FromPipeline(ctx, p.tracer, pipe, p.log, p.cfg, pq)
 }

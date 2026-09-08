@@ -9,7 +9,8 @@ server:
   relay_timeout: "20s"
 
 amqp:
-  addr: amqp://guest:guest@127.0.0.1:5672/
+  rabbitmq:
+    addr: amqp://guest:guest@127.0.0.1:5672/
 
 logs:
   level: debug
@@ -29,18 +30,24 @@ jobs:
     queue1:
       driver: amqp
       config:
-        durable: true
-        exchange: amqp.direct
-        routing_key: queue1
-        queue: queue1
-        exchange_type: direct
-        exchange_durable: true
+        connection: rabbitmq
+        exchange:
+          name: amqp.direct
+          type: direct
+          durable: true
+        queue:
+          name: queue1
+          routing_key: queue1
+          durable: true
     queue2:
       driver: amqp
       config:
-        durable: true
-        exchange: amqp.direct
-        routing_key: queue2
-        queue: queue2
-        exchange_type: direct
-        exchange_durable: true
+        connection: rabbitmq
+        exchange:
+          name: amqp.direct
+          type: direct
+          durable: true
+        queue:
+          name: queue2
+          routing_key: queue2
+          durable: true

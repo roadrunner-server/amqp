@@ -40,8 +40,7 @@ func jobsPlugins() []any {
 	}
 }
 
-// boot starts the container with the observed logger and waits for the rpc
-// listener, which is the readiness signal the fixed sleeps used to stand in for.
+// boot starts the test plugins with log capture and a TCP listener probe.
 func boot(t *testing.T, cfgPath string, addr string, opts ...helpers.Option) (*helpers.RR, func()) {
 	t.Helper()
 
@@ -52,8 +51,7 @@ func boot(t *testing.T, cfgPath string, addr string, opts ...helpers.Option) (*h
 		}, opts...)...)
 }
 
-// pushAndDrain pushes one job to each pipeline, waits for all of them to be
-// processed and destroys the pipelines.
+// pushAndDrain pushes one job per pipeline and waits for processing before pipeline removal.
 func pushAndDrain(t *testing.T, rr *helpers.RR, addr string, pipes ...string) {
 	t.Helper()
 
@@ -71,7 +69,6 @@ func pushAndDrain(t *testing.T, rr *helpers.RR, addr string, pipes ...string) {
 	rr.RequireLogCount(t, "delivery channel was closed, leaving the AMQP listener", len(pipes))
 }
 
-// TestBoots covers the current config schema.
 func TestBoots(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-init.yaml", initAddr)
 
@@ -80,33 +77,20 @@ func TestBoots(t *testing.T) {
 	pushAndDrain(t, rr, initAddr, "test-1", "test-2")
 }
 
-// TestBootsV2 covers the same round trip through the version 2 config schema,
-// which the driver still parses for old setups.
-func TestBootsV2(t *testing.T) {
-	rr, _ := boot(t, "configs/.rr-amqp-init-v2.yaml", initAddr, helpers.WithConfigVersion("2.7"))
-
-	rr.RequireLogCount(t, "pipeline was started", 2)
-
-	pushAndDrain(t, rr, initAddr, "test-1", "test-2")
-}
-
-// TestHeaders covers pipelines declared with queue headers.
 func TestHeaders(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-headers.yaml", initAddr)
 
 	pushAndDrain(t, rr, initAddr, "test-1", "test-2")
 }
 
-// TestFanoutExchange covers two pipelines bound to one fanout exchange, where
-// every message reaches both queues regardless of the routing key.
+// TestFanoutExchange checks two pipelines that consume from one shared queue on a fanout exchange. Each push adds one message to that queue. See https://www.rabbitmq.com/tutorials/amqp-concepts#exchange-fanout.
 func TestFanoutExchange(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-fanout.yaml", initAddr)
 
 	pushAndDrain(t, rr, initAddr, "test-fanout-1", "test-fanout-2")
 }
 
-// TestRoutingQueue covers two pipelines whose routing keys equal their queue
-// names on a shared direct exchange: a push to one must not reach the other.
+// TestRoutingQueue uses queue names as routing keys on a shared direct exchange. A message must reach only its target queue. See https://www.rabbitmq.com/tutorials/amqp-concepts#exchange-direct.
 func TestRoutingQueue(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-routing-queue.yaml", initAddr)
 
@@ -122,8 +106,7 @@ func TestRoutingQueue(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 2)
 }
 
-// TestXRoutingKeyHeader covers the x-routing-key header, which overrides the
-// pipeline's routing key: the job lands on the queue bound to the header's key.
+// TestXRoutingKeyHeader checks that x-routing-key overrides the pipeline's routing key.
 func TestXRoutingKeyHeader(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-xroutingkey.yaml", initAddr)
 
@@ -146,8 +129,7 @@ func TestXRoutingKeyHeader(t *testing.T) {
 	rr.RequireLogCount(t, "job was processed successfully", 1)
 }
 
-// TestReset covers the resetter: the worker pool is rebuilt and the pipelines
-// keep processing afterwards.
+// TestReset checks job processing before and after a worker reset.
 func TestReset(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-init.yaml", initAddr)
 
@@ -167,9 +149,7 @@ func TestReset(t *testing.T) {
 	rr.RequireLogCount(t, "job was processed successfully", 4)
 }
 
-// TestPriorityQueueBacklog pushes far more jobs than the two slow workers can
-// take, so most of them sit in the priority queue until the pipelines are
-// destroyed under them.
+// TestPriorityQueueBacklog destroys pipelines while slow workers process jobs and other jobs wait in the jobs priority queue.
 func TestPriorityQueueBacklog(t *testing.T) {
 	const rounds = 100
 
@@ -182,8 +162,7 @@ func TestPriorityQueueBacklog(t *testing.T) {
 
 	rr.RequireLogCount(t, "job was pushed successfully", 2*rounds)
 
-	// both workers have to be busy before the destroy, otherwise the backlog
-	// would never form
+	// Pipeline destruction must overlap job processing.
 	rr.WaitLog(t, "job processing was started", 2)
 
 	helpers.DestroyPipelines(pqAddr, "test-1-pq", "test-2-pq")(t)
@@ -192,8 +171,7 @@ func TestPriorityQueueBacklog(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 2)
 }
 
-// TestTwentyPipelines boots twenty pipelines against ten pollers and runs one
-// job through each, so more pipelines than processor goroutines is covered.
+// TestTwentyPipelines uses more pipelines than pollers.
 func TestTwentyPipelines(t *testing.T) {
 	const pipelines = 20
 
@@ -218,9 +196,7 @@ func TestTwentyPipelines(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", pipelines)
 }
 
-// TestDelayedJobsSurviveResume covers bug 1792: a delayed job pushed to a
-// paused pipeline has to be delivered exactly once after the resume, not
-// duplicated and not lost.
+// TestDelayedJobsSurviveResume checks delayed-job processing after pipeline resume.
 func TestDelayedJobsSurviveResume(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-bug-1792.yaml", bugAddr)
 
@@ -237,9 +213,6 @@ func TestDelayedJobsSurviveResume(t *testing.T) {
 	rr.RequireLogCount(t, "job was processed successfully", 2)
 }
 
-// TestDeclareAndConsume declares a pipeline over rpc and drives it through the
-// full life cycle, including the calls that must fail: a second resume and a
-// pause with no active listener.
 func TestDeclareAndConsume(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-declare.yaml", initAddr)
 
@@ -263,7 +236,6 @@ func TestDeclareAndConsume(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 1)
 }
 
-// TestDeclareDurable covers a durable, non exclusive queue declared over rpc.
 func TestDeclareDurable(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-declare.yaml", initAddr)
 
@@ -280,14 +252,13 @@ func TestDeclareDurable(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 1)
 }
 
-// TestDeclareWithQueueHeaders covers a queue declared with amqp headers.
 func TestDeclareWithQueueHeaders(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-headers-declare.yaml", initAddr)
 
 	helpers.DeclarePipe(initAddr, "test-6", map[string]string{
 		"exclusive":     "false",
 		"durable":       "true",
-		"queue_headers": `{"x-queue-mode":"lazy"}`,
+		"queue_headers": `{"rr_connection":"unknown","x-queue-mode":"lazy"}`,
 	})(t)
 	helpers.ResumePipes(initAddr, "test-6")(t)
 
@@ -300,9 +271,7 @@ func TestDeclareWithQueueHeaders(t *testing.T) {
 	rr.RequireLogCount(t, "job was processed successfully", 1)
 }
 
-// TestRequeueRetriesUntilAck covers the worker that requeues a job with a
-// growing attempts header and only acks the fourth delivery. The old test
-// slept a flat 25 seconds.
+// TestRequeueRetriesUntilAck checks that the worker requeues the first three deliveries and acknowledges the fourth.
 func TestRequeueRetriesUntilAck(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-jobs-err.yaml", initAddr)
 
@@ -315,16 +284,14 @@ func TestRequeueRetriesUntilAck(t *testing.T) {
 	helpers.PausePipelines(initAddr, "test-4")(t)
 	helpers.DestroyPipelines(initAddr, "test-4")(t)
 
-	// one original delivery plus the three the worker requeued
+	// One initial delivery plus three retries.
 	rr.RequireLogCount(t, "job processing was started", 4)
 	rr.RequireLogCount(t, "job was re-queued", 3)
 	rr.RequireLogCount(t, "job was pushed successfully", 1)
 	rr.RequireLogCount(t, "job was processed successfully", 1)
 }
 
-// TestStatsTrackDelayed covers the state report. A delayed job pushed to a
-// paused pipeline stays counted as delayed, and resuming drains it once the
-// delay lapses. The old test slept out the delay.
+// TestStatsTrackDelayed checks delayed and queued counts while a pipeline is paused and after it resumes.
 func TestStatsTrackDelayed(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-declare.yaml", initAddr)
 
@@ -363,8 +330,6 @@ func TestStatsTrackDelayed(t *testing.T) {
 	rr.RequireLogCount(t, "job was processed successfully", 3)
 }
 
-// TestBadResponseIsReported covers a worker answering with a payload the jobs
-// response handler cannot parse.
 func TestBadResponseIsReported(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-init-br.yaml", initAddr)
 
@@ -379,13 +344,12 @@ func TestBadResponseIsReported(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 2)
 }
 
-// TestNoGlobalSection covers a config with pipelines but no amqp section. The
-// plugin disables itself and the container still serves.
+// TestNoGlobalSection checks that the container starts with the AMQP plugin disabled.
 func TestNoGlobalSection(t *testing.T) {
 	boot(t, "configs/.rr-no-global.yaml", initAddr, helpers.WithLogLevel(slog.LevelError))
 }
 
-// TestOTELSpans checks the spans the driver emits around a push and a destroy.
+// TestOTELSpans checks span names for job publishing, consumption, and pipeline removal. See https://opentelemetry.io/docs/concepts/signals/traces/#spans.
 func TestOTELSpans(t *testing.T) {
 	tracer := newInMemoryTracer(t)
 
@@ -421,7 +385,6 @@ func TestOTELSpans(t *testing.T) {
 	}
 }
 
-// inMemoryTracer stands in for the otel plugin, keeping the spans in process.
 type inMemoryTracer struct {
 	tp  *sdktrace.TracerProvider
 	exp *tracetest.InMemoryExporter

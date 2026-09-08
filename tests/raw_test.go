@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// publishRaw puts a message on the exchange without going through RoadRunner.
+// publishRaw sends a message directly to the broker.
 func publishRaw(t *testing.T, exchange, routingKey string, pub amqp.Publishing) {
 	t.Helper()
 
@@ -25,9 +25,7 @@ func publishRaw(t *testing.T, exchange, routingKey string, pub amqp.Publishing) 
 	require.NoError(t, ch.PublishWithContext(t.Context(), exchange, routingKey, false, false, pub))
 }
 
-// TestRawPayload covers messages published by something other than RoadRunner:
-// one with no RR headers at all, one with values RoadRunner would never write.
-// The listener has to synthesize what is missing and keep going.
+// TestRawPayload checks that the listener processes messages with missing or invalid RoadRunner headers.
 func TestRawPayload(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-raw.yaml", initAddr)
 

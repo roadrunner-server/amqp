@@ -8,12 +8,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// The readonly broker from its own compose file grants the readonly user no
-// configure permissions, so the driver cannot declare anything on it. The
-// queue it consumes is provisioned by the broker's definitions file.
+// The readonly user has read and write permissions but no configure permission. The broker's definitions file creates the exchange, queue, and binding. See https://www.rabbitmq.com/docs/3.13/access-control#authorisation.
 
-// TestReadOnlyDeclareOff covers consuming from a pre-provisioned queue without
-// declaring: the pipeline has to come up and process on read permissions alone.
+// TestReadOnlyDeclareOff uses existing broker resources with declarations disabled.
 func TestReadOnlyDeclareOff(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-readonly-declare-off.yaml", initAddr)
 
@@ -27,8 +24,7 @@ func TestReadOnlyDeclareOff(t *testing.T) {
 	rr.RequireLogCount(t, "pipeline was stopped", 1)
 }
 
-// TestReadOnlyDeclareOn covers the opposite: with declare enabled the driver
-// tries to create the queue, and the broker has to refuse the boot outright.
+// TestReadOnlyDeclareOn checks that the broker rejects declarations without configure permission.
 func TestReadOnlyDeclareOn(t *testing.T) {
 	err := helpers.StartExpectServeError(t, "configs/.rr-amqp-readonly-declare-on.yaml", jobsPlugins())
 

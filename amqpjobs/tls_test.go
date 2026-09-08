@@ -18,9 +18,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// writeTestCerts generates a throwaway self signed certificate usable both as
-// the client pair and as a root CA, so the tests do not depend on files
-// generated outside the module.
+// writeTestCerts creates local test files with one self-signed certificate for the client and root CA. See https://pkg.go.dev/crypto/x509#CreateCertificate.
 func writeTestCerts(t *testing.T) (keyFile, certFile, caFile string) {
 	t.Helper()
 

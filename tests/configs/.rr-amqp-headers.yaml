@@ -9,7 +9,8 @@ server:
   relay_timeout: "20s"
 
 amqp:
-  addr: amqp://guest:guest@127.0.0.1:5672/
+  rabbitmq:
+    addr: amqp://guest:guest@127.0.0.1:5672/
 
 logs:
   level: error
@@ -28,38 +29,42 @@ jobs:
     test-1:
       driver: amqp
       config:
+        connection: rabbitmq
         prefetch: 100
-        queue: test-1-queue-headers
         priority: 1
-        exchange: default
-        delete_queue_on_stop: true
-        exchange_type: direct
-        routing_key: test-1-queue-headers
-        exclusive: false
-        durable: true
-        multiple_ack: false
-        requeue_on_fail: false
-        queue_headers:
-          x-queue-type: quorum
+        exchange:
+          name: default
+          type: direct
+        queue:
+          name: test-1-queue-headers
+          routing_key: test-1-queue-headers
+          exclusive: false
+          durable: true
+          delete_on_stop: true
+          multiple_ack: false
+          requeue_on_fail: false
+          headers:
+            x-queue-type: quorum
 
     test-2:
       driver: amqp
       config:
+        connection: rabbitmq
         prefetch: 100
-        queue: test-2-queue-headers
         priority: 2
-        delete_queue_on_stop: true
-        exchange: default
-        exchange_type: direct
-        routing_key: test-2-queue-headers
-        exclusive: false
-        durable: true
-        multiple_ack: false
-        requeue_on_fail: false
-        queue_headers:
-          x-queue-mode: lazy
+        exchange:
+          name: default
+          type: direct
+        queue:
+          name: test-2-queue-headers
+          routing_key: test-2-queue-headers
+          exclusive: false
+          durable: true
+          delete_on_stop: true
+          multiple_ack: false
+          requeue_on_fail: false
+          headers:
+            x-queue-mode: lazy
 
 
-  # list of pipelines to be consumed by the server, keep empty if you want to start consuming manually
   consume: [ "test-1", "test-2" ]
-

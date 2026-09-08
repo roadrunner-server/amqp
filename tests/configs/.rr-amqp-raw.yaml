@@ -9,7 +9,8 @@ server:
   relay_timeout: "20s"
 
 amqp:
-  addr: amqp://guest:guest@127.0.0.1:5672/
+  rabbitmq:
+    addr: amqp://guest:guest@127.0.0.1:5672/
 
 logs:
   level: debug
@@ -30,13 +31,15 @@ jobs:
     test-raw:
       driver: amqp
       config:
+        connection: rabbitmq
         prefetch: 100
-        queue: test-raw-queue
         priority: 1
-        exchange: default
-        delete_queue_on_stop: true
-        exchange_type: direct
-        routing_key: test-raw
+        exchange:
+          name: default
+          type: direct
+        queue:
+          name: test-raw-queue
+          routing_key: test-raw
+          delete_on_stop: true
 
   consume: [ "test-raw" ]
-
