@@ -137,8 +137,8 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 
 				// cancel new deliveries on the consume channel (not the publish channel)
 				if d.consumeChan != nil {
-					if cancelErr := d.consumeChan.Cancel(d.config.Load().consumerID(), false); cancelErr != nil {
-						d.log.Error("consumer cancel", "error", cancelErr, "consumerID", d.config.Load().consumerID())
+					if cancelErr := d.consumeChan.Cancel(d.config.Load().QueueConfig.ConsumerID, false); cancelErr != nil {
+						d.log.Error("consumer cancel", "error", cancelErr, "consumerID", d.config.Load().QueueConfig.ConsumerID)
 					}
 				}
 
@@ -150,10 +150,10 @@ func (d *Driver) redialer() { //nolint:gocognit,gocyclo
 				// remove the items associated with that pipeline from the priority_queue
 				_ = d.pq.Remove((*d.pipeline.Load()).Name())
 
-				if d.config.Load().deleteQueueOnStopEnabled() {
+				if d.config.Load().QueueConfig.DeleteOnStop {
 					var n int
 					var err error
-					n, err = pch.QueueDelete(d.config.Load().queueName(), false, false, false)
+					n, err = pch.QueueDelete(d.config.Load().QueueConfig.Name, false, false, false)
 					if err != nil {
 						d.log.Error("queue delete", "error", err)
 					}
@@ -300,8 +300,8 @@ func (d *Driver) redial(rm *redialMsg) {
 
 			// start reading messages from the channel
 			deliv, err := d.consumeChan.Consume(
-				d.config.Load().queueName(),
-				d.config.Load().consumerID(),
+				d.config.Load().QueueConfig.Name,
+				d.config.Load().QueueConfig.ConsumerID,
 				false,
 				false,
 				false,

@@ -80,16 +80,6 @@ func TestBoots(t *testing.T) {
 	pushAndDrain(t, rr, initAddr, "test-1", "test-2")
 }
 
-// TestBootsV2 covers the same round trip through the version 2 config schema,
-// which the driver still parses for old setups.
-func TestBootsV2(t *testing.T) {
-	rr, _ := boot(t, "configs/.rr-amqp-init-v2.yaml", initAddr, helpers.WithConfigVersion("2.7"))
-
-	rr.RequireLogCount(t, "pipeline was started", 2)
-
-	pushAndDrain(t, rr, initAddr, "test-1", "test-2")
-}
-
 // TestHeaders covers pipelines declared with queue headers.
 func TestHeaders(t *testing.T) {
 	rr, _ := boot(t, "configs/.rr-amqp-headers.yaml", initAddr)
@@ -287,7 +277,7 @@ func TestDeclareWithQueueHeaders(t *testing.T) {
 	helpers.DeclarePipe(initAddr, "test-6", map[string]string{
 		"exclusive":     "false",
 		"durable":       "true",
-		"queue_headers": `{"x-queue-mode":"lazy"}`,
+		"queue_headers": `{"rr_connection":"unknown","x-queue-mode":"lazy"}`,
 	})(t)
 	helpers.ResumePipes(initAddr, "test-6")(t)
 

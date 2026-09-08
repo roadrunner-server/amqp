@@ -18,7 +18,7 @@ import (
 )
 
 const (
-	// defaultConfigVersion is the config schema version used by the test configs.
+	// defaultConfigVersion is the RoadRunner version passed to the config plugin.
 	defaultConfigVersion = "v2024.2.0"
 	// probeTimeout caps how long Start waits for the rpc listener to answer.
 	probeTimeout = time.Second * 30
@@ -41,7 +41,6 @@ const (
 
 // bootCfg holds the options applied to a container before it is started.
 type bootCfg struct {
-	version  string
 	logLevel slog.Level
 	logger   loggerKind
 	probe    func(ctx context.Context) bool
@@ -58,11 +57,6 @@ const (
 
 // Option customizes the container built by Start.
 type Option func(*bootCfg)
-
-// WithConfigVersion overrides the config schema version.
-func WithConfigVersion(v string) Option {
-	return func(b *bootCfg) { b.version = v }
-}
 
 // WithLogLevel sets the endure container log level (debug by default).
 func WithLogLevel(l slog.Level) Option {
@@ -234,14 +228,14 @@ func StartExpectServeError(t *testing.T, cfgPath string, plugins []any, opts ...
 func newContainer(t *testing.T, cfgPath string, plugins []any, opts []Option) (*endure.Endure, *RR, *bootCfg) {
 	t.Helper()
 
-	bc := &bootCfg{version: defaultConfigVersion, logLevel: slog.LevelDebug}
+	bc := &bootCfg{logLevel: slog.LevelDebug}
 	for _, o := range opts {
 		o(bc)
 	}
 
 	rr := &RR{}
 	all := make([]any, 0, 2+len(plugins)+len(bc.extra))
-	all = append(all, &config.Plugin{Version: bc.version, Path: cfgPath})
+	all = append(all, &config.Plugin{Version: defaultConfigVersion, Path: cfgPath})
 
 	switch bc.logger {
 	case realLogger:

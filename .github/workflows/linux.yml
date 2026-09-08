@@ -120,9 +120,8 @@ jobs:
       - name: Run golang tests with coverage
         run: |
           cd tests
-          # only the plain broker and the proxy; the tls listener needs the
-          # generated certificates the durability job does not carry
-          docker compose -f env/docker-compose-amqp.yaml up -d --wait rabbitmq toxiproxy
+          # TLS certificates are not needed for the two plain brokers.
+          docker compose -f env/docker-compose-amqp.yaml up -d --wait rabbitmq rabbitmq_slow toxiproxy
 
           mkdir ./coverage-ci
           go test -timeout 20m -v -race -cover -tags=debug -run TestRedial -coverpkg=github.com/roadrunner-server/amqp/v6/... -coverprofile=./coverage-ci/durability.out -covermode=atomic ./...

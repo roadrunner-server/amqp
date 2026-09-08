@@ -150,6 +150,7 @@ func DeclarePipe(address string, name string, opts map[string]string) func(t *te
 	return func(t *testing.T) {
 		pipeline := map[string]string{
 			"driver":               "amqp",
+			"connection":           "rabbitmq",
 			"name":                 name,
 			"routing_key":          name,
 			"queue":                name,

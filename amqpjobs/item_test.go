@@ -42,7 +42,7 @@ func testDriver(t *testing.T) *Driver {
 	t.Helper()
 	d := &Driver{log: slog.New(slog.NewTextHandler(io.Discard, nil))}
 
-	cfg := &config{Version: 1, V1Config: &v1config{RoutingKey: "rk"}}
+	cfg := &config{QueueConfig: &queueConfig{RoutingKey: "rk"}}
 	require.NoError(t, cfg.InitDefault())
 	d.config.Store(cfg)
 

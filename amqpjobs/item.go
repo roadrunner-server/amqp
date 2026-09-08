@@ -270,10 +270,10 @@ func (d *Driver) unpack(deliv amqp.Delivery) *Item {
 		Payload: deliv.Body,
 		Options: &Options{
 			Pipeline:    (*d.pipeline.Load()).Name(),
-			Queue:       conf.queueName(),
+			Queue:       conf.QueueConfig.Name,
 			requeueFn:   d.handleItem,
-			multipleAck: conf.multipleAckEnabled(),
-			requeue:     conf.requeueOnFailEnabled(),
+			multipleAck: conf.QueueConfig.MultipleAck,
+			requeue:     conf.QueueConfig.RequeueOnFail,
 		},
 	}
 

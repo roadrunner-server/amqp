@@ -11,71 +11,48 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestConfigInitDefaultV1(t *testing.T) {
-	// direct exchange requires a routing key
+func TestConfigInitDefault(t *testing.T) {
 	c := &config{
-		Version:  1,
-		V1Config: &v1config{RoutingKey: "test-rk"},
+		QueueConfig: &queueConfig{RoutingKey: "test-rk"},
 	}
 	require.NoError(t, c.InitDefault())
 
-	// global defaults
-	require.Equal(t, "amqp://guest:guest@127.0.0.1:5672/", c.Addr)
 	require.Equal(t, 10, c.Prefetch)
 	require.Equal(t, int64(10), c.Priority)
 	require.Equal(t, 60, c.RedialTimeout)
 
-	// v1 defaults
-	require.Equal(t, "direct", c.V1Config.ExchangeType)
-	require.Equal(t, "amqp.default", c.V1Config.Exchange)
-	require.True(t, strings.HasPrefix(c.V1Config.ConsumerID, "roadrunner-"),
-		"consumer id should default to a roadrunner-prefixed UUID, got %q", c.V1Config.ConsumerID)
+	require.Equal(t, "direct", c.ExchangeConfig.Type)
+	require.Equal(t, "amqp.default", c.ExchangeConfig.Name)
+	require.True(t, strings.HasPrefix(c.QueueConfig.ConsumerID, "roadrunner-"),
+		"expected a consumer ID with the roadrunner- prefix, got %q", c.QueueConfig.ConsumerID)
 }
 
-func TestConfigInitDefaultV1Fanout(t *testing.T) {
-	// fanout does not require a routing key
+func TestConfigInitDefaultFanout(t *testing.T) {
 	c := &config{
-		Version:  1,
-		V1Config: &v1config{ExchangeType: "fanout"},
+		ExchangeConfig: &exchangeConfig{Type: "fanout"},
 	}
 	require.NoError(t, c.InitDefault())
-	require.Equal(t, "fanout", c.V1Config.ExchangeType)
-}
-
-func TestConfigInitDefaultV2(t *testing.T) {
-	c := &config{
-		Version: 2,
-		V2Config: &v2config{
-			QueueConfig: &queueConfigV2{RoutingKey: "test-rk"},
-		},
-	}
-	require.NoError(t, c.InitDefault())
-
-	require.Equal(t, "direct", c.V2Config.ExchangeConfig.Type)
-	require.Equal(t, "amqp.default", c.V2Config.ExchangeConfig.Name)
-	require.True(t, strings.HasPrefix(c.V2Config.QueueConfig.ConsumerID, "roadrunner-"),
-		"consumer id should default to a roadrunner-prefixed UUID, got %q", c.V2Config.QueueConfig.ConsumerID)
-	// consumerID() must read the v2 path
-	require.Equal(t, c.V2Config.QueueConfig.ConsumerID, c.consumerID())
+	require.Equal(t, "fanout", c.ExchangeConfig.Type)
+	require.NotNil(t, c.QueueConfig)
 }
 
 func TestConfigInitDefaultErrors(t *testing.T) {
-	t.Run("unsupported version", func(t *testing.T) {
-		err := (&config{Version: 99}).InitDefault()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unsupported AMQP pipeline config version")
-	})
-
 	t.Run("missing routing key for non-fanout exchange", func(t *testing.T) {
-		err := (&config{Version: 1, V1Config: &v1config{ExchangeType: "direct"}}).InitDefault()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "empty routing key")
+		err := (&config{ExchangeConfig: &exchangeConfig{Type: "direct"}}).InitDefault()
+		require.ErrorContains(t, err, "empty routing key")
 	})
 
-	t.Run("v2 without exchange or queue", func(t *testing.T) {
-		err := (&config{Version: 2}).InitDefault()
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "exchange or queue configuration is required")
+	t.Run("missing exchange and queue", func(t *testing.T) {
+		err := (&config{}).InitDefault()
+		require.ErrorContains(t, err, "exchange or queue configuration is required")
+	})
+
+	t.Run("invalid exchange type", func(t *testing.T) {
+		err := (&config{
+			ExchangeConfig: &exchangeConfig{Type: "invalid"},
+			QueueConfig:    &queueConfig{RoutingKey: "test-rk"},
+		}).InitDefault()
+		require.ErrorContains(t, err, `invalid exchange type "invalid"`)
 	})
 }
 
@@ -120,17 +97,5 @@ func TestConfigValidateTLS(t *testing.T) {
 		}}
 		require.NoError(t, c.validateTLS(op))
 		require.Equal(t, tls.RequireAndVerifyClientCert, c.TLS.auth)
-	})
-}
-
-func TestConfigConsumerID(t *testing.T) {
-	t.Run("v1", func(t *testing.T) {
-		c := &config{Version: 1, V1Config: &v1config{ConsumerID: "consumer-v1"}}
-		require.Equal(t, "consumer-v1", c.consumerID())
-	})
-
-	t.Run("v2", func(t *testing.T) {
-		c := &config{Version: 2, V2Config: &v2config{QueueConfig: &queueConfigV2{ConsumerID: "consumer-v2"}}}
-		require.Equal(t, "consumer-v2", c.consumerID())
 	})
 }

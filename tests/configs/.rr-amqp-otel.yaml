@@ -9,7 +9,8 @@ server:
   relay_timeout: "20s"
 
 amqp:
-  addr: amqp://guest:guest@127.0.0.1:5672/
+  rabbitmq:
+    addr: amqp://guest:guest@127.0.0.1:5672/
 
 logs:
   level: error
@@ -28,14 +29,16 @@ jobs:
     test-1:
       driver: amqp
       config:
+        connection: rabbitmq
         prefetch: 100
-        queue: test-1-otel
         priority: 1
-        exchange: default
-        delete_queue_on_stop: true
-        exchange_type: direct
-        routing_key: test-1-otel
-        durable: true
+        exchange:
+          name: default
+          type: direct
+        queue:
+          name: test-1-otel
+          routing_key: test-1-otel
+          durable: true
+          delete_on_stop: true
 
   consume: [ "test-1" ]
-

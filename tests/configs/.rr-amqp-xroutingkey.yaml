@@ -9,7 +9,8 @@ server:
   relay_timeout: "20s"
 
 amqp:
-  addr: amqp://guest:guest@127.0.0.1:5672/
+  rabbitmq:
+    addr: amqp://guest:guest@127.0.0.1:5672/
 
 logs:
   level: debug
@@ -27,24 +28,29 @@ jobs:
     test-1:
       driver: amqp
       config:
+        connection: rabbitmq
         prefetch: 100
-        queue: test-1-rk1
         priority: 1
-        exchange: default
-        delete_queue_on_stop: true
-        exchange_type: direct
-        routing_key: x-routing-key
+        exchange:
+          name: default
+          type: direct
+        queue:
+          name: test-1-rk1
+          routing_key: x-routing-key
+          delete_on_stop: true
     test-2:
       driver: amqp
       config:
+        connection: rabbitmq
         prefetch: 100
-        queue: test-1-rk2
         priority: 1
-        exchange: default
-        delete_queue_on_stop: true
-        exchange_type: direct
-        routing_key: super-routing-key
+        exchange:
+          name: default
+          type: direct
+        queue:
+          name: test-1-rk2
+          routing_key: super-routing-key
+          delete_on_stop: true
 
   # list of pipelines to be consumed by the server, keep empty if you want to start consuming manually
   consume: [ "test-2" ]
-
