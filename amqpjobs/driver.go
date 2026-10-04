@@ -412,7 +412,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 		conf := d.config.Load()
 		pipe := *d.pipeline.Load()
 
-		if !conf.queueDeclareEnabled() {
+		if !conf.queueDeclareEnabled() || conf.QueueConfig.Name == "" {
 			// Prevent redial from replacing the connection during this operation.
 			d.mu.RLock()
 			defer d.mu.RUnlock()
@@ -424,25 +424,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 					Driver:   pipe.Driver(),
 					Queue:    conf.QueueConfig.Name,
 					Delayed:  d.delayed.Load(),
-					Ready:    ready(d.listeners.Load()),
-				}, nil
-			}
-
-			return nil, errors.Str("connection is closed, can't get the state")
-		}
-
-		if conf.QueueConfig.Name == "" {
-			// Prevent redial from replacing the connection during this operation.
-			d.mu.RLock()
-			defer d.mu.RUnlock()
-
-			if !d.conn.IsClosed() {
-				return &jobs.State{
-					Priority: uint64(pipe.Priority()), //nolint:gosec
-					Pipeline: pipe.Name(),
-					Driver:   pipe.Driver(),
-					Delayed:  d.delayed.Load(),
-					Ready:    ready(d.listeners.Load()),
+					Ready:    d.listeners.Load() > 0,
 				}, nil
 			}
 
@@ -469,7 +451,7 @@ func (d *Driver) State(ctx context.Context) (*jobs.State, error) {
 			Queue:    q.Name,
 			Active:   int64(q.Messages),
 			Delayed:  d.delayed.Load(),
-			Ready:    ready(d.listeners.Load()),
+			Ready:    d.listeners.Load() > 0,
 		}, nil
 
 	case <-ctx.Done():
@@ -717,10 +699,6 @@ func dial(addr string, amqps *config) (*amqp.Connection, error) {
 	}
 
 	return conn, nil
-}
-
-func ready(r uint32) bool {
-	return r > 0
 }
 
 func (d *Driver) setRoutingKey(headers map[string][]string) string {
