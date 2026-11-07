@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"testing"
 	"time"
@@ -99,7 +99,7 @@ func TestNamedConnectionsPHPQueueHeaders(t *testing.T) {
 		Name      string         `json:"name"`
 		Arguments map[string]any `json:"arguments"`
 	}
-	require.NoError(t, json.NewDecoder(resp.Body).Decode(&declared))
+	require.NoError(t, json.UnmarshalRead(resp.Body, &declared))
 	require.Equal(t, queue, declared.Name)
 	require.Equal(t, "lazy", declared.Arguments["x-queue-mode"])
 	require.NotContains(t, declared.Arguments, "rr_connection")
