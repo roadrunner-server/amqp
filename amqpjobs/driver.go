@@ -4,7 +4,7 @@ package amqpjobs
 import (
 	"context"
 	"crypto/tls"
-	"encoding/json"
+	"encoding/json/v2"
 	stderr "errors"
 	"fmt"
 	"log/slog"
